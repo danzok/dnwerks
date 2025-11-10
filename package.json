@@ -11,6 +11,7 @@
     "db:setup-supabase": "node scripts/supabase-setup.js",
     "db:create-admin": "tsx scripts/create-admin.ts",
     "db:create-admin-supabase": "tsx scripts/setup-admin.ts",
+    "db:create-custom-admin": "tsx scripts/create-custom-admin.ts",
     "context7:validate": "echo 'Running Context7 validation...' && npm run lint && npm run type-check",
     "context7:review": "echo 'Running Context7 code review...' && npm run context7:validate",
     "context7:migrate": "echo 'Migrating to Context7 standards...' && npm run context7:validate",

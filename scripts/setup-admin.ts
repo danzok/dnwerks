@@ -1,6 +1,11 @@
 /**
  * Setup script to create the first admin user
  * Run this script once to set up the initial admin account
+ *
+ * Usage:
+ * npm run db:create-admin-supabase
+ * OR with custom credentials:
+ * ADMIN_EMAIL=your@email.com ADMIN_PASSWORD=yourpassword npm run db:create-admin-supabase
  */
 
 import { createClient } from '@supabase/supabase-js'
@@ -9,8 +14,14 @@ import { generateInviteCode } from '../src/lib/auth-utils.js'
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
-const adminEmail = 'danisbermainaja@gmail.com'
-const adminPassword = 'testingaja'
+// Get admin credentials from environment variables or use defaults
+const adminEmail = process.env.ADMIN_EMAIL || 'admin@dnwerks.com'
+const adminPassword = process.env.ADMIN_PASSWORD || 'admin123456'
+
+console.log('🔧 Admin Setup Configuration:')
+console.log(`📧 Email: ${adminEmail}`)
+console.log(`🔑 Password: ${adminPassword}`)
+console.log('')
 
 async function setupAdmin() {
   if (!supabaseUrl || !supabaseServiceKey) {
