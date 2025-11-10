@@ -2,8 +2,11 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
-  // Simple middleware that just allows all requests
-  // Authentication will be handled client-side
+  // Simple middleware for development - allows all requests
+  // In production, this will be enhanced with proper authentication
+
+  // For now, let all requests pass through
+  // Authentication will be handled at the component level
   return NextResponse.next({
     request,
   })
