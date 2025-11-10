@@ -1,34 +1,75 @@
-import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs'
-import { NextResponse } from 'next/server'
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { NextResponse, type NextRequest } from 'next/server'
 
-export async function proxy(req: any) {
-  const res = NextResponse.next()
-  const supabase = createMiddlewareClient({ req, res })
+export async function proxy(req: NextRequest) {
+  let response = NextResponse.next({
+    request: {
+      headers: req.headers,
+    },
+  })
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll: () => {
+          try {
+            // Next.js 16 compatibility: convert cookies to expected format
+            const cookies = req.cookies.getAll()
+            return cookies.map(cookie => ({
+              name: cookie.name,
+              value: cookie.value
+            }))
+          } catch (error) {
+            // Fallback for edge cases
+            return []
+          }
+        },
+        get(name: string) {
+          return req.cookies.get(name)?.value
+        },
+        set(name: string, value: string, options: CookieOptions) {
+          req.cookies.set({
+            name,
+            value,
+            ...options,
+          })
+          response = NextResponse.next({
+            request: {
+              headers: req.headers,
+            },
+          })
+          response.cookies.set({
+            name,
+            value,
+            ...options,
+          })
+        },
+        remove(name: string, options: CookieOptions) {
+          req.cookies.set({
+            name,
+            value: '',
+            ...options,
+          })
+          response = NextResponse.next({
+            request: {
+              headers: req.headers,
+            },
+          })
+          response.cookies.set({
+            name,
+            value: '',
+            ...options,
+          })
+        },
+      },
+    }
+  )
 
   const {
     data: { session },
   } = await supabase.auth.getSession()
 
-  // Redirect to login if accessing protected routes without session
-  if (!session && req.nextUrl.pathname.startsWith('/dashboard')) {
-    const redirectUrl = new URL('/sign-in', req.url)
-    return NextResponse.redirect(redirectUrl)
-  }
-
-  // Redirect to dashboard if accessing auth routes with session
-  if (session && (req.nextUrl.pathname.startsWith('/sign-in') || req.nextUrl.pathname.startsWith('/sign-up'))) {
-    const redirectUrl = new URL('/dashboard', req.url)
-    return NextResponse.redirect(redirectUrl)
-  }
-
-  return res
-}
-
-export const config = {
-  matcher: [
-    // Skip Next.js internals and all static files, unless found in search params
-    "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
-    // Always run for API routes
-    "/(api|trpc)(.*)",
-  ],
+  return response
 }

@@ -38,11 +38,28 @@ export function createClient() {
     supabaseAnonKey!,
     {
       cookies: {
-        getAll: () => cookieStore.getAll(),
+        getAll: () => {
+          try {
+            // Next.js 16 compatibility: convert cookies to expected format
+            const cookies = cookieStore.getAll()
+            return cookies.map(cookie => ({
+              name: cookie.name,
+              value: cookie.value
+            }))
+          } catch (error) {
+            // Fallback for older Next.js versions or edge cases
+            return []
+          }
+        },
         setAll: (cookiesToSet) => {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            cookieStore.set(name, value, options)
-          )
+          try {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            )
+          } catch (error) {
+            // Handle edge cases where cookie setting might fail
+            console.warn('Failed to set cookie:', name, error)
+          }
         },
       },
     }
