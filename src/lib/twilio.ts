@@ -4,11 +4,17 @@ const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
 const twilioPhoneNumber = process.env.TWILIO_PHONE_NUMBER;
 
-if (!accountSid || !authToken || !twilioPhoneNumber) {
-  console.warn('Twilio credentials not configured. SMS functionality will not work.');
+// Validate Twilio credentials format
+const isValidTwilioSid = accountSid && accountSid.startsWith('AC') && accountSid.length > 10;
+const isValidAuthToken = authToken && authToken.length > 10;
+const isValidPhoneNumber = twilioPhoneNumber && twilioPhoneNumber.startsWith('+');
+
+if (!isValidTwilioSid || !isValidAuthToken || !isValidPhoneNumber) {
+  console.warn('Twilio credentials not properly configured. SMS functionality will not work.');
 }
 
-const client = accountSid && authToken ? new Twilio(accountSid, authToken) : null;
+// Only create client if credentials are valid
+const client = isValidTwilioSid && isValidAuthToken ? new Twilio(accountSid, authToken) : null;
 
 export interface SendSMSResult {
   sid: string;
