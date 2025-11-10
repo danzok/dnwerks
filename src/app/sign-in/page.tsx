@@ -33,6 +33,21 @@ function SignInContent() {
     setLoading(true);
     setError(null);
 
+    // Check if Supabase is properly configured
+    const hasSupabaseConfig = process.env.NEXT_PUBLIC_SUPABASE_URL &&
+      !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your-project-id') &&
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY &&
+      !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY.includes('your_supabase_anon_key_here');
+
+    // If no Supabase config, allow any login for demo purposes
+    if (!hasSupabaseConfig) {
+      console.log('🔐 Sign in: Supabase not configured, using mock authentication');
+      router.push("/dashboard");
+      router.refresh();
+      setLoading(false);
+      return;
+    }
+
     try {
       const { error } = await supabase.auth.signInWithPassword({
         email,
