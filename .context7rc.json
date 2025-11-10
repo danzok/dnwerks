@@ -1,0 +1,91 @@
+{
+  "$schema": "https://context7.com/schema.json",
+  "version": "1.0.0",
+  "project": {
+    "name": "DNwerks SMS Campaign Management",
+    "description": "SMS campaign management platform built with Next.js, React, Supabase, and shadcn/ui",
+    "type": "web-application"
+  },
+  "context7": {
+    "enabled": true,
+    "referenceMode": true,
+    "libraries": {
+      "nextjs": {
+        "id": "/vercel/next.js",
+        "version": "latest",
+        "priority": "high",
+        "topics": ["App Router", "Server Components", "Data Fetching", "API Routes"]
+      },
+      "react": {
+        "id": "/reactjs/react.dev",
+        "version": "19",
+        "priority": "high",
+        "topics": ["Hooks", "Components", "Patterns", "Rules of Hooks"]
+      },
+      "supabase": {
+        "id": "/supabase/supabase",
+        "version": "latest",
+        "priority": "high",
+        "topics": ["Database", "Auth", "RLS", "TypeScript"]
+      },
+      "shadcn": {
+        "id": "/shadcn-ui/ui",
+        "version": "latest",
+        "priority": "medium",
+        "topics": ["Components", "Design System", "Themes"]
+      }
+    }
+  },
+  "standards": {
+    "react": {
+      "componentsAtModuleLevel": true,
+      "noConditionalHooks": true,
+      "jsxOnly": true,
+      "noDirectComponentCalls": true
+    },
+    "nextjs": {
+      "appRouter": true,
+      "serverComponents": true,
+      "properDataFetching": true,
+      "layoutStructure": true
+    },
+    "supabase": {
+      "rowLevelSecurity": true,
+      "typeSafety": true,
+      "errorHandling": true,
+      "environmentConfig": true
+    },
+    "typescript": {
+      "strictMode": true,
+      "comprehensiveTyping": true,
+      "noImplicitAny": true
+    }
+  },
+  "validation": {
+    "enabled": true,
+    "rules": [
+      "react-component-definition",
+      "react-hook-usage",
+      "nextjs-app-router",
+      "supabase-rls",
+      "typescript-strict"
+    ],
+    "exclude": [
+      "node_modules/**",
+      ".next/**",
+      "dist/**"
+    ]
+  },
+  "development": {
+    "mcpIntegration": true,
+    "realTimeGuidance": true,
+    "codeReviewMode": true,
+    "documentationAccess": true
+  },
+  "scripts": {
+    "validate": "context7 validate",
+    "review": "context7 review",
+    "docs": "context7 docs",
+    "migrate": "context7 migrate"
+  }
+}

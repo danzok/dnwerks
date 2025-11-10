@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Bulk Upload Errors</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "primary": "#f5f5f5",
+            "secondary": "#0c0a09",
+            "tertiary": "#ea580c",
+          },
+          fontFamily: {
+            "sans": ["Inter", "sans-serif"]
+          },
+          borderRadius: {
+            "DEFAULT": "0.25rem",
+            "lg": "0.5rem",
+            "xl": "0.75rem",
+            "full": "9999px"
+          },
+        },
+      },
+    }
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      font-size: 24px;
+    }
+  </style>
+</head>
+<body class="bg-primary font-sans text-secondary">
+<div class="relative flex min-h-screen w-full">
+<aside class="flex flex-col w-64 bg-primary border-r border-gray-200 p-4 shrink-0">
+<div class="flex flex-col gap-4">
+<div class="flex items-center gap-3 p-2">
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10" data-alt="SMS Manager Logo" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCBd1DWJEl2NqT9N2fUvVniiNx5T5PDUnXWMoq76jjnZN6-tcdrTxtTNk3l3AADk6e5uE6PvL5ClLOmKb3o2M0wvhZIry8y3AguxiZBUf-gGIpuDJErTlqcc4Z0e6P1IZ1upLOmopeE7_t66rQ_t-T-AETriLRRrukLkfBSL3P7-WLv8LzYRE1lLdSb9Lwe9M8DUT7Hl7NEC5XGFL3n36LoWgdutb67jac8skxa8BDdZPK3-2DSMyalSywEkQpWcyq7ILYnSCSh0CA");'></div>
+<div class="flex flex-col">
+<h1 class="text-secondary text-base font-medium leading-normal">SMS Manager</h1>
+<p class="text-gray-600 text-sm font-normal leading-normal">Twilio Edition</p>
+</div>
+</div>
+<nav class="flex flex-col gap-2">
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 hover:text-secondary transition-colors duration-200" href="#">
+<span class="material-symbols-outlined text-gray-500 !text-xl group-hover:text-secondary">dashboard</span>
+<p class="text-sm font-medium leading-normal">Dashboard</p>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 hover:text-secondary transition-colors duration-200" href="#">
+<span class="material-symbols-outlined text-gray-500 !text-xl group-hover:text-secondary">campaign</span>
+<p class="text-sm font-medium leading-normal">Campaigns</p>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 hover:text-secondary transition-colors duration-200" href="#">
+<span class="material-symbols-outlined text-gray-500 !text-xl group-hover:text-secondary">group</span>
+<p class="text-sm font-medium leading-normal">Customers</p>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 hover:text-secondary transition-colors duration-200" href="#">
+<span class="material-symbols-outlined text-gray-500 !text-xl group-hover:text-secondary">analytics</span>
+<p class="text-sm font-medium leading-normal">Analytics</p>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg bg-tertiary/10 text-tertiary" href="#">
+<span class="material-symbols-outlined !text-xl">upload_file</span>
+<p class="text-sm font-medium leading-normal">Uploads</p>
+</a>
+</nav>
+</div>
+<div class="mt-auto flex flex-col gap-1">
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 hover:text-secondary transition-colors duration-200" href="#">
+<span class="material-symbols-outlined text-gray-500 !text-xl group-hover:text-secondary">settings</span>
+<p class="text-sm font-medium leading-normal">Settings</p>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 hover:text-secondary transition-colors duration-200" href="#">
+<span class="material-symbols-outlined text-gray-500 !text-xl group-hover:text-secondary">help</span>
+<p class="text-sm font-medium leading-normal">Help</p>
+</a>
+</div>
+</aside>
+<main class="flex-1 flex flex-col p-6 lg:p-8 bg-gray-50">
+<div class="w-full max-w-7xl mx-auto">
+<header class="flex flex-wrap justify-between items-center gap-4 mb-6">
+<h1 class="text-secondary text-3xl md:text-4xl font-black leading-tight tracking-[-0.033em]">Bulk Upload Errors: customer_list_q4.csv</h1>
+<button class="flex items-center justify-center gap-2 min-w-[84px] cursor-pointer rounded-lg h-10 px-4 bg-tertiary text-white text-sm font-bold leading-normal tracking-[0.015em] hover:bg-tertiary/90 transition-colors">
+<span class="material-symbols-outlined !text-xl">download</span>
+<span class="truncate">Download Log</span>
+</button>
+</header>
+<section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+<div class="flex flex-col gap-2 rounded-xl p-6 bg-white border border-gray-200">
+<p class="text-gray-600 text-base font-medium leading-normal">File Name</p>
+<p class="text-secondary tracking-light text-2xl font-bold leading-tight truncate">customer_list_q4.csv</p>
+</div>
+<div class="flex flex-col gap-2 rounded-xl p-6 bg-white border border-gray-200">
+<p class="text-gray-600 text-base font-medium leading-normal">Total Errors</p>
+<p class="text-tertiary tracking-light text-2xl font-bold leading-tight">152</p>
+</div>
+<div class="flex flex-col gap-2 rounded-xl p-6 bg-white border border-gray-200">
+<p class="text-gray-600 text-base font-medium leading-normal">Rows Affected</p>
+<p class="text-secondary tracking-light text-2xl font-bold leading-tight">1,230</p>
+</div>
+</section>
+<div class="bg-white rounded-xl border border-gray-200">
+<div class="flex flex-wrap items-center justify-between gap-4 p-4 border-b border-gray-200">
+<div class="flex-1 min-w-[280px]">
+<label class="flex flex-col h-12 w-full">
+<div class="flex w-full flex-1 items-stretch rounded-lg h-full">
+<div class="text-gray-500 flex bg-gray-100 items-center justify-center pl-4 rounded-l-lg border border-r-0 border-gray-300">
+<span class="material-symbols-outlined !text-xl">search</span>
+</div>
+<input class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-r-lg text-secondary focus:outline-0 focus:ring-2 focus:ring-tertiary border border-gray-300 bg-white h-full placeholder:text-gray-600 px-4 text-sm font-normal leading-normal" placeholder="Search by field or error message..." value=""/>
+</div>
+</label>
+</div>
+<div class="flex items-center gap-2">
+<select class="form-select h-12 rounded-lg bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-tertiary focus:border-tertiary text-sm">
+<option>Error Type</option>
+<option>Formatting</option>
+<option>Missing Value</option>
+<option>Duplicate</option>
+</select>
+<select class="form-select h-12 rounded-lg bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-tertiary focus:border-tertiary text-sm">
+<option>Status</option>
+<option>Unresolved</option>
+<option>Corrected</option>
+</select>
+<button class="h-12 px-4 text-sm font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">Clear</button>
+</div>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left">
+<thead class="border-b border-gray-200">
+<tr>
+<th class="p-4 text-sm font-semibold text-gray-600">Row #</th>
+<th class="p-4 text-sm font-semibold text-gray-600">Field Name</th>
+<th class="p-4 text-sm font-semibold text-gray-600">Value Provided</th>
+<th class="p-4 text-sm font-semibold text-gray-600">Error Description</th>
+<th class="p-4 text-sm font-semibold text-gray-600">Status</th>
+<th class="p-4 text-sm font-semibold text-gray-600 text-right">Actions</th>
+</tr>
+</thead>
+<tbody>
+<tr class="border-b border-gray-200 hover:bg-tertiary/5 transition-colors duration-200">
+<td class="p-4 text-sm text-gray-900">15</td>
+<td class="p-4 text-sm text-gray-900 font-mono">phone_number</td>
+<td class="p-4 text-sm text-gray-900 font-mono">555-0101</td>
+<td class="p-4 text-sm text-tertiary">Invalid format. Expected E.164.</td>
+<td class="p-4 text-sm text-gray-900">
+<span class="inline-flex items-center rounded-full bg-tertiary/10 px-2 py-1 text-xs font-medium text-tertiary">Unresolved</span>
+</td>
+<td class="p-4 text-right">
+<button class="p-2 text-gray-500 hover:text-tertiary rounded-full hover:bg-gray-100 transition-colors">
+<span class="material-symbols-outlined !text-xl">edit</span>
+</button>
+</td>
+</tr>
+<tr class="border-b border-gray-200 hover:bg-tertiary/5 transition-colors duration-200">
+<td class="p-4 text-sm text-gray-900">42</td>
+<td class="p-4 text-sm text-gray-900 font-mono">first_name</td>
+<td class="p-4 text-sm text-gray-600 font-mono italic">null</td>
+<td class="p-4 text-sm text-tertiary">Required field is missing.</td>
+<td class="p-4 text-sm text-gray-900">
+<span class="inline-flex items-center rounded-full bg-tertiary/10 px-2 py-1 text-xs font-medium text-tertiary">Unresolved</span>
+</td>
+<td class="p-4 text-right">
+<button class="p-2 text-gray-500 hover:text-tertiary rounded-full hover:bg-gray-100 transition-colors">
+<span class="material-symbols-outlined !text-xl">edit</span>
+</button>
+</td>
+</tr>
+<tr class="border-b border-gray-200 hover:bg-tertiary/5 transition-colors duration-200">
+<td class="p-4 text-sm text-gray-900">78</td>
+<td class="p-4 text-sm text-gray-900 font-mono">email</td>
+<td class="p-4 text-sm text-gray-900 font-mono">jane.doe@example.com</td>
+<td class="p-4 text-sm text-orange-500">Duplicate entry found.</td>
+<td class="p-4 text-sm text-gray-900">
+<span class="inline-flex items-center rounded-full bg-green-500/10 px-2 py-1 text-xs font-medium text-green-600">Corrected</span>
+</td>
+<td class="p-4 text-right">
+<button class="p-2 text-gray-500 hover:text-tertiary rounded-full hover:bg-gray-100 transition-colors">
+<span class="material-symbols-outlined !text-xl">edit</span>
+</button>
+</td>
+</tr>
+<tr class="hover:bg-tertiary/5 transition-colors duration-200">
+<td class="p-4 text-sm text-gray-900">112</td>
+<td class="p-4 text-sm text-gray-900 font-mono">last_name</td>
+<td class="p-4 text-sm text-gray-600 font-mono italic">null</td>
+<td class="p-4 text-sm text-tertiary">Required field is missing.</td>
+<td class="p-4 text-sm text-gray-900">
+<span class="inline-flex items-center rounded-full bg-tertiary/10 px-2 py-1 text-xs font-medium text-tertiary">Unresolved</span>
+</td>
+<td class="p-4 text-right">
+<button class="p-2 text-gray-500 hover:text-tertiary rounded-full hover:bg-gray-100 transition-colors">
+<span class="material-symbols-outlined !text-xl">edit</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="flex items-center justify-between p-4">
+<p class="text-sm text-gray-600">Showing 1 to 4 of 152 results</p>
+<div class="flex items-center gap-2">
+<button class="flex items-center justify-center p-2 rounded-lg text-gray-500 border border-gray-300 bg-white hover:bg-gray-100 hover:text-tertiary transition-colors">
+<span class="material-symbols-outlined !text-xl">chevron_left</span>
+</button>
+<span class="text-sm font-medium text-gray-800">Page 1 of 38</span>
+<button class="flex items-center justify-center p-2 rounded-lg text-gray-500 border border-gray-300 bg-white hover:bg-gray-100 hover:text-tertiary transition-colors">
+<span class="material-symbols-outlined !text-xl">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

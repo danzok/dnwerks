@@ -1,0 +1,39 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx create-next-app:*)",
+      "Bash(npm init:*)",
+      "Bash(npm install:*)",
+      "Bash(npx:*)",
+      "Bash(npm run dev:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(taskkill:*)",
+      "Bash(npm run db:push:*)",
+      "Bash(curl:*)",
+      "Bash(nul:*)",
+      "Bash(powershell \"Stop-Process -Id 55352 -Force\")",
+      "Bash(powershell:*)",
+      "Bash(grep:*)",
+      "Bash(cat:*)",
+      "Bash(xxd:*)",
+      "Bash(node:*)",
+      "Bash(tasklist:*)",
+      "Bash(claude mcp add:*)",
+      "mcp__context7__get-library-docs",
+      "mcp__context7__resolve-library-id",
+      "Bash(npm run context7:validate:*)",
+      "Bash(npm run type-check:*)",
+      "Bash(tree:*)",
+      "Bash(git add:*)",
+      "Bash(vercel:*)",
+      "Bash(npm i:*)",
+      "Bash(git push:*)",
+      "Bash(git checkout:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

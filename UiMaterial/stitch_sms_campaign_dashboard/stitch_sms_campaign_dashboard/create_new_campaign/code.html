@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Create New SMS Campaign</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<style type="text/tailwindcss">
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#f5f5f5",
+                        "secondary": "#0c0a09",
+                        "tertiary": "#ea580c",
+                    },
+                    fontFamily: {
+                        "sans": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-primary font-sans text-secondary">
+<div class="relative flex h-auto min-h-screen w-full">
+<aside class="flex flex-col gap-4 p-4 bg-primary-darker w-64 border-r border-secondary/10 shrink-0">
+<div class="flex flex-col gap-4">
+<div class="flex gap-3 items-center px-2">
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10" data-alt="Twilio logo" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuD3Yz1icQOUXfwE4RCZPMZRaVhSnEda_2WakXFh7-14DQU_A8qKMaKvkqILVpJfGGTlj5TxYsAlwBh7dJhJrk4NYFSDw8XY4_KdAJZ7V_mvP2f3ntq-RrmWYqegut93JZSTOvRmQ0Hsu0nFHvmSudnmUrT1VR0tufp2bLewEdugz5-WcygIyu3y5puVmH8oLDYO6I_qE7bZskroCUR87d_udIQkw5ttboy9wPMJcx-h3_EL1_nPSYHIEaoivxovyYqDAHo288X7bfY");'></div>
+<div class="flex flex-col">
+<h1 class="text-secondary text-base font-medium leading-normal">Twilio SMS</h1>
+<p class="text-secondary/70 text-sm font-normal leading-normal">Marketing Suite</p>
+</div>
+</div>
+<nav class="flex flex-col gap-2">
+<a class="flex items-center gap-3 px-3 py-2 text-secondary/70 hover:text-secondary hover:bg-secondary/5 rounded-lg" href="#">
+<span class="material-symbols-outlined text-xl">dashboard</span>
+<p class="text-sm font-medium leading-normal">Dashboard</p>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg bg-tertiary/10 text-tertiary" href="#">
+<span class="material-symbols-outlined text-xl" style="font-variation-settings: 'FILL' 1;">campaign</span>
+<p class="text-sm font-medium leading-normal">Campaigns</p>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-secondary/70 hover:text-secondary hover:bg-secondary/5 rounded-lg" href="#">
+<span class="material-symbols-outlined text-xl">group</span>
+<p class="text-sm font-medium leading-normal">Customers</p>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-secondary/70 hover:text-secondary hover:bg-secondary/5 rounded-lg" href="#">
+<span class="material-symbols-outlined text-xl">bar_chart</span>
+<p class="text-sm font-medium leading-normal">Analytics</p>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-secondary/70 hover:text-secondary hover:bg-secondary/5 rounded-lg" href="#">
+<span class="material-symbols-outlined text-xl">settings</span>
+<p class="text-sm font-medium leading-normal">Settings</p>
+</a>
+</nav>
+</div>
+<div class="mt-auto flex flex-col gap-1">
+<a class="flex items-center gap-3 px-3 py-2 text-secondary/70 hover:text-secondary hover:bg-secondary/5 rounded-lg" href="#">
+<span class="material-symbols-outlined text-xl">help</span>
+<p class="text-sm font-medium leading-normal">Help Center</p>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-secondary/70 hover:text-secondary hover:bg-secondary/5 rounded-lg" href="#">
+<span class="material-symbols-outlined text-xl">logout</span>
+<p class="text-sm font-medium leading-normal">Log Out</p>
+</a>
+</div>
+</aside>
+<main class="flex-1 p-6 lg:p-10">
+<div class="max-w-7xl mx-auto">
+<div class="flex flex-wrap gap-2 mb-4">
+<a class="text-secondary/70 text-sm font-medium leading-normal hover:text-tertiary" href="#">Campaigns</a>
+<span class="text-secondary/70 text-sm font-medium leading-normal">/</span>
+<span class="text-secondary text-sm font-medium leading-normal">Create New Campaign</span>
+</div>
+<header class="flex flex-wrap justify-between items-center gap-4 mb-8">
+<h1 class="text-secondary text-4xl font-bold leading-tight tracking-tight">Create New Campaign</h1>
+<div class="flex gap-3">
+<button class="flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-white hover:bg-secondary/5 border border-secondary/20 text-secondary text-sm font-medium leading-normal tracking-wide">
+<span class="truncate">Save Draft</span>
+</button>
+<button class="flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-secondary hover:bg-secondary/90 text-primary text-sm font-bold leading-normal tracking-wide disabled:bg-secondary/50 disabled:text-primary/70 disabled:cursor-not-allowed">
+<span class="truncate">Schedule Campaign</span>
+</button>
+</div>
+</header>
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+<div class="lg:col-span-2 flex flex-col gap-8">
+<section class="bg-white rounded-xl p-6 border border-secondary/10">
+<h2 class="text-secondary text-xl font-bold leading-tight tracking-tight mb-6">Campaign Details</h2>
+<div class="flex flex-col gap-6">
+<label class="flex flex-col">
+<p class="text-secondary text-base font-medium leading-normal pb-2">Campaign Name</p>
+<input class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-secondary focus:outline-0 focus:ring-2 focus:ring-tertiary/50 border border-secondary/20 bg-primary focus:border-tertiary h-12 placeholder:text-secondary/50 px-4 text-base font-normal leading-normal" placeholder="e.g., Summer Sale Announcement" value=""/>
+</label>
+<label class="flex flex-col">
+<p class="text-secondary text-base font-medium leading-normal pb-2">Message Content</p>
+<div class="relative">
+<textarea class="form-textarea w-full resize-y rounded-lg text-secondary focus:outline-0 focus:ring-2 focus:ring-tertiary/50 border border-secondary/20 bg-primary focus:border-tertiary placeholder:text-secondary/50 p-4 text-base font-normal leading-normal min-h-[160px]" placeholder="Hi {{first_name}}, our summer sale is now live! Get 25% off all items."></textarea>
+<p class="text-xs text-secondary/60 absolute bottom-3 right-4">34 / 160 characters</p>
+</div>
+<p class="text-sm text-secondary/60 mt-2">Use tags like <code class="bg-secondary/10 text-tertiary px-1.5 py-0.5 rounded-md text-xs">{{first_name}}</code> for personalization.</p>
+</label>
+</div>
+</section>
+<section class="bg-white rounded-xl p-6 border border-secondary/10">
+<h2 class="text-secondary text-xl font-bold leading-tight tracking-tight mb-6">Target Audience</h2>
+<div class="flex flex-col">
+<p class="text-secondary text-base font-medium leading-normal pb-2">Customer Segments</p>
+<div class="flex flex-wrap gap-2 p-2 rounded-lg border border-secondary/20 bg-primary min-h-[48px] items-center">
+<span class="flex items-center gap-1.5 bg-tertiary/20 text-tertiary text-sm font-medium px-2 py-1 rounded-full">
+                                        State: California
+                                        <button class="text-tertiary/70 hover:text-tertiary">
+<span class="material-symbols-outlined text-base">close</span>
+</button>
+</span>
+<span class="flex items-center gap-1.5 bg-tertiary/20 text-tertiary text-sm font-medium px-2 py-1 rounded-full">
+                                        Tag: New User
+                                        <button class="text-tertiary/70 hover:text-tertiary">
+<span class="material-symbols-outlined text-base">close</span>
+</button>
+</span>
+<input class="form-input flex-1 bg-transparent border-0 focus:ring-0 text-secondary placeholder:text-secondary/50 p-1 min-w-[150px]" placeholder="Add segment..."/>
+</div>
+<p class="text-sm text-secondary/60 mt-2">Estimated recipients: <span class="text-secondary font-medium">1,482 customers</span></p>
+</div>
+</section>
+<section class="bg-white rounded-xl p-6 border border-secondary/10">
+<h2 class="text-secondary text-xl font-bold leading-tight tracking-tight mb-6">Delivery</h2>
+<div class="flex flex-col gap-4">
+<div class="flex flex-wrap gap-4">
+<label class="flex items-center gap-3 p-4 border border-secondary/20 rounded-lg flex-1 cursor-pointer has-[:checked]:border-tertiary has-[:checked]:bg-tertiary/10">
+<input checked="" class="form-radio bg-primary border-secondary/30 text-tertiary focus:ring-tertiary" name="schedule" type="radio"/>
+<span class="text-base font-medium text-secondary">Send Now</span>
+</label>
+<label class="flex items-center gap-3 p-4 border border-secondary/20 rounded-lg flex-1 cursor-pointer has-[:checked]:border-tertiary has-[:checked]:bg-tertiary/10">
+<input class="form-radio bg-primary border-secondary/30 text-tertiary focus:ring-tertiary" name="schedule" type="radio"/>
+<span class="text-base font-medium text-secondary">Schedule for Later</span>
+</label>
+</div>
+</div>
+</section>
+</div>
+<aside class="lg:col-span-1">
+<div class="sticky top-10">
+<h3 class="text-lg font-bold text-secondary mb-4">SMS Preview</h3>
+<div class="bg-white border border-secondary/10 rounded-xl p-4 w-full max-w-sm mx-auto shadow-sm">
+<div class="flex justify-between items-center text-xs text-secondary/70 mb-4 px-2">
+<span>9:41 AM</span>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-base">signal_cellular_alt</span>
+<span class="material-symbols-outlined text-base">wifi</span>
+<span class="material-symbols-outlined text-base">battery_full</span>
+</div>
+</div>
+<div class="bg-tertiary/10 p-3 rounded-xl min-h-[80px]">
+<p class="text-secondary text-sm leading-relaxed">Hi Alex, our summer sale is now live! Get 25% off all items.</p>
+</div>
+<div class="flex items-center gap-2 mt-4 bg-secondary/5 p-2 rounded-full">
+<input class="bg-transparent border-0 text-secondary/70 text-sm flex-1 focus:ring-0 h-6 p-1" disabled="" placeholder="iMessage" type="text"/>
+<span class="material-symbols-outlined text-secondary/50 text-xl">mic</span>
+</div>
+</div>
+</div>
+</aside>
+</div>
+</div>
+</main>
+</div>
+
+</body></html>

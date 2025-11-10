@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>SMS Campaign Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+<script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#f5f5f5",
+                        "secondary": "#0c0a09",
+                        "tertiary": "#ea580c",
+                    },
+                    fontFamily: {
+                        "sans": ["Inter", "sans-serif"]
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings:
+                'FILL' 0,
+                'wght' 400,
+                'GRAD' 0,
+                'opsz' 24;
+            vertical-align: middle;
+        }
+    </style>
+</head>
+<body class="bg-primary font-sans text-secondary">
+<div class="flex min-h-screen w-full">
+<aside class="flex w-64 flex-col border-r border-neutral-200 bg-white p-4">
+<div class="flex flex-col gap-8">
+<div class="flex items-center gap-3">
+<div class="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary">
+<span class="material-symbols-outlined text-white" style="font-size: 24px;">sms</span>
+</div>
+<div class="flex flex-col">
+<h1 class="text-base font-semibold leading-normal text-secondary">SMS Manager</h1>
+<p class="text-sm font-normal leading-normal text-neutral-600">Twilio Integration</p>
+</div>
+</div>
+<nav class="flex flex-col gap-1">
+<a class="group flex items-center gap-3 rounded-md bg-secondary px-3 py-2" href="#">
+<span class="material-symbols-outlined text-white" style="font-size: 20px;">dashboard</span>
+<p class="text-sm font-medium leading-normal text-white">Dashboard</p>
+</a>
+<a class="group flex items-center gap-3 rounded-md px-3 py-2 hover:bg-neutral-100" href="#">
+<span class="material-symbols-outlined text-neutral-500 group-hover:text-secondary" style="font-size: 20px;">campaign</span>
+<p class="text-sm font-medium leading-normal text-neutral-700 group-hover:text-secondary">Campaigns</p>
+</a>
+<a class="group flex items-center gap-3 rounded-md px-3 py-2 hover:bg-neutral-100" href="#">
+<span class="material-symbols-outlined text-neutral-500 group-hover:text-secondary" style="font-size: 20px;">group</span>
+<p class="text-sm font-medium leading-normal text-neutral-700 group-hover:text-secondary">Customers</p>
+</a>
+<a class="group flex items-center gap-3 rounded-md px-3 py-2 hover:bg-neutral-100" href="#">
+<span class="material-symbols-outlined text-neutral-500 group-hover:text-secondary" style="font-size: 20px;">settings</span>
+<p class="text-sm font-medium leading-normal text-neutral-700 group-hover:text-secondary">Settings</p>
+</a>
+</nav>
+</div>
+<div class="mt-auto">
+<button class="group flex w-full items-center gap-3 rounded-md px-3 py-2 hover:bg-neutral-100">
+<span class="material-symbols-outlined text-neutral-500 group-hover:text-secondary" style="font-size: 20px;">logout</span>
+<p class="text-sm font-medium leading-normal text-neutral-700 group-hover:text-secondary">Log Out</p>
+</button>
+</div>
+</aside>
+<main class="flex-1 overflow-y-auto bg-primary p-8">
+<div class="mx-auto max-w-7xl">
+<div class="mb-8 flex flex-wrap items-center justify-between gap-4">
+<div class="flex flex-col gap-1">
+<h1 class="text-3xl font-bold leading-tight tracking-tight text-secondary">Dashboard</h1>
+<p class="text-base font-normal leading-normal text-neutral-600">Here's an overview of your campaign performance.</p>
+</div>
+<button class="flex h-10 items-center justify-center gap-2 rounded-lg bg-secondary px-4 text-sm font-medium text-white hover:bg-secondary/90">
+<span class="material-symbols-outlined" style="font-size: 20px;">add</span>
+                    New Campaign
+                </button>
+</div>
+<div class="mb-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+<div class="flex flex-col gap-2 rounded-xl border border-neutral-200 bg-white p-6">
+<p class="text-base font-medium leading-normal text-neutral-700">Total Campaigns Sent</p>
+<p class="text-4xl font-bold leading-tight tracking-tight text-secondary">142</p>
+<p class="text-sm font-medium leading-normal text-green-600">+5% this month</p>
+</div>
+<div class="flex flex-col gap-2 rounded-xl border border-neutral-200 bg-white p-6">
+<p class="text-base font-medium leading-normal text-neutral-700">Delivery Rate</p>
+<p class="text-4xl font-bold leading-tight tracking-tight text-secondary">98.5%</p>
+<p class="text-sm font-medium leading-normal text-green-600">+0.2% this month</p>
+</div>
+<div class="flex flex-col gap-2 rounded-xl border border-neutral-200 bg-white p-6">
+<p class="text-base font-medium leading-normal text-neutral-700">Click-Through Rate</p>
+<p class="text-4xl font-bold leading-tight tracking-tight text-secondary">12.3%</p>
+<p class="text-sm font-medium leading-normal text-red-600">-1.1% this month</p>
+</div>
+<div class="flex flex-col gap-2 rounded-xl border border-neutral-200 bg-white p-6">
+<p class="text-base font-medium leading-normal text-neutral-700">Total Subscribers</p>
+<p class="text-4xl font-bold leading-tight tracking-tight text-secondary">1,204</p>
+<p class="text-sm font-medium leading-normal text-green-600">+25 this month</p>
+</div>
+</div>
+<div class="grid grid-cols-1 gap-8 lg:grid-cols-3">
+<div class="lg:col-span-2">
+<div class="mb-4 flex items-center justify-between">
+<h2 class="text-2xl font-bold leading-tight tracking-tight text-secondary">Recent Campaigns</h2>
+</div>
+<div class="overflow-hidden rounded-xl border border-neutral-200 bg-white">
+<div class="overflow-x-auto">
+<table class="w-full text-left text-sm text-neutral-700">
+<thead class="border-b border-neutral-200 bg-neutral-50 text-xs uppercase text-neutral-600">
+<tr>
+<th class="px-6 py-3" scope="col">Campaign Name</th>
+<th class="px-6 py-3" scope="col">Date Sent</th>
+<th class="px-6 py-3" scope="col">Delivery Rate</th>
+<th class="px-6 py-3" scope="col">Status</th>
+<th class="px-6 py-3 text-right" scope="col">Actions</th>
+</tr>
+</thead>
+<tbody>
+<tr class="border-b border-neutral-200 hover:bg-neutral-50">
+<td class="whitespace-nowrap px-6 py-4 font-medium text-secondary">Summer Sale</td>
+<td class="px-6 py-4">2023-08-15</td>
+<td class="px-6 py-4">99.2%</td>
+<td class="px-6 py-4"><span class="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">Completed</span></td>
+<td class="px-6 py-4 text-right">
+<button class="font-medium text-secondary hover:underline">View</button>
+</td>
+</tr>
+<tr class="border-b border-neutral-200 hover:bg-neutral-50">
+<td class="whitespace-nowrap px-6 py-4 font-medium text-secondary">New Arrivals</td>
+<td class="px-6 py-4">2023-08-10</td>
+<td class="px-6 py-4">98.8%</td>
+<td class="px-6 py-4"><span class="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">Completed</span></td>
+<td class="px-6 py-4 text-right">
+<button class="font-medium text-secondary hover:underline">View</button>
+</td>
+</tr>
+<tr class="border-b border-neutral-200 hover:bg-neutral-50">
+<td class="whitespace-nowrap px-6 py-4 font-medium text-secondary">Flash Deal</td>
+<td class="px-6 py-4">2023-08-05</td>
+<td class="px-6 py-4">97.5%</td>
+<td class="px-6 py-4"><span class="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">Completed</span></td>
+<td class="px-6 py-4 text-right">
+<button class="font-medium text-secondary hover:underline">View</button>
+</td>
+</tr>
+<tr class="hover:bg-neutral-50">
+<td class="whitespace-nowrap px-6 py-4 font-medium text-secondary">Holiday Promo</td>
+<td class="px-6 py-4">Upcoming</td>
+<td class="px-6 py-4">-</td>
+<td class="px-6 py-4"><span class="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800">Scheduled</span></td>
+<td class="px-6 py-4 text-right">
+<button class="font-medium text-secondary hover:underline">Edit</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+<div class="lg:col-span-1">
+<div class="flex h-full flex-col gap-6 rounded-xl border border-neutral-200 bg-white p-6">
+<h2 class="text-xl font-bold leading-tight tracking-tight text-secondary">Account Usage</h2>
+<div>
+<p class="text-sm font-medium text-neutral-700">Messages Sent</p>
+<div class="mt-2 h-2.5 w-full rounded-full bg-neutral-200">
+<div class="h-2.5 rounded-full bg-secondary" style="width: 75%"></div>
+</div>
+<p class="mt-1 text-right text-xs text-neutral-600">3,750 / 5,000</p>
+</div>
+<div>
+<p class="text-sm font-medium text-neutral-700">Subscribers</p>
+<div class="mt-2 h-2.5 w-full rounded-full bg-neutral-200">
+<div class="h-2.5 rounded-full bg-secondary" style="width: 60%"></div>
+</div>
+<p class="mt-1 text-right text-xs text-neutral-600">1,204 / 2,000</p>
+</div>
+<div class="mt-auto pt-4">
+<button class="w-full rounded-lg border border-neutral-300 bg-white px-5 py-2.5 text-center text-sm font-medium text-secondary hover:bg-neutral-100 focus:outline-none focus:ring-4 focus:ring-neutral-200" type="button">
+                                Upgrade Plan
+                            </button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>
