@@ -41,13 +41,9 @@ export interface InviteCode {
   id: string;
   code: string;
   created_by: string;
-  used_by?: string | null;
-  used_at?: string | null;
   expires_at?: string | null;
   created_at: string;
   max_uses: number;
-  used_count: number;
-  is_active: boolean;
   email?: string | null;
   notes?: string | null;
 }

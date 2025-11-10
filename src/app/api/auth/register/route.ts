@@ -45,30 +45,49 @@ export async function POST(request: Request) {
       }, { status: 400 })
     }
 
-    // Create user account with Supabase
-    const { data: authData, error: signUpError } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          full_name: fullName || '',
+    // Check if this is the mock client
+    const isMockClient = !supabase.auth || typeof supabase.auth.signUp !== 'function'
+
+    let authData: any = null
+
+    if (isMockClient) {
+      // For mock client, simulate successful signup
+      authData = {
+        user: {
+          id: `mock-user-${Date.now()}`,
+          email: email,
+          email_confirmed_at: new Date().toISOString()
+        }
+      }
+      console.log('Mock: User account created for:', email)
+    } else {
+      // Create user account with Supabase
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: fullName || '',
+          },
         },
-      },
-    })
+      })
 
-    if (signUpError) {
-      console.error('Sign up error:', signUpError)
+      if (signUpError) {
+        console.error('Sign up error:', signUpError)
 
-      // Handle specific errors
-      if (signUpError.message.includes('User already registered')) {
+        // Handle specific errors
+        if (signUpError.message.includes('User already registered')) {
+          return NextResponse.json({
+            error: 'An account with this email already exists'
+          }, { status: 400 })
+        }
+
         return NextResponse.json({
-          error: 'An account with this email already exists'
-        }, { status: 400 })
+          error: 'Failed to create account. Please try again.'
+        }, { status: 500 })
       }
 
-      return NextResponse.json({
-        error: 'Failed to create account. Please try again.'
-      }, { status: 500 })
+      authData = signUpData
     }
 
     // If user was created successfully, create their profile
