@@ -50,6 +50,10 @@ export class TwilioSMSService implements SMSService {
   private client: any; // Twilio client
 
   constructor(accountSid: string, authToken: string) {
+    // Validate credentials before creating client
+    if (!accountSid || !accountSid.startsWith('AC') || !authToken || authToken.length < 10) {
+      throw new Error('Invalid Twilio credentials provided');
+    }
     this.client = new Twilio(accountSid, authToken);
   }
 
@@ -253,11 +257,17 @@ export function createSMSService(): SMSService {
   const accountSid = process.env.TWILIO_ACCOUNT_SID;
   const authToken = process.env.TWILIO_AUTH_TOKEN;
 
-  if (accountSid && authToken && accountSid !== 'your_twilio_account_sid' && Twilio) {
+  // Validate Twilio credentials format
+  const isValidTwilioSid = accountSid && accountSid.startsWith('AC') && accountSid.length > 10;
+  const isValidAuthToken = authToken && authToken.length > 10;
+  const isNotPlaceholder = accountSid !== 'your_twilio_account_sid' &&
+                          authToken !== 'your_twilio_auth_token_here';
+
+  if (isValidTwilioSid && isValidAuthToken && isNotPlaceholder && Twilio) {
     console.log('Using Twilio SMS service');
     return new TwilioSMSService(accountSid, authToken);
   } else {
-    console.log('Using Mock SMS service for development');
+    console.log('Using Mock SMS service for development - Twilio not properly configured');
     return new MockSMSService();
   }
 }
