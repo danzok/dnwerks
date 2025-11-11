@@ -18,130 +18,118 @@ export default function LoginPage() {
   const supabase = createClient()
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    setError('')
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
 
     try {
-      console.log('🔐 Attempting login with:', { email, password: '***' })
-      
-      // Check if Supabase is properly configured
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-      const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-      
-      if (!supabaseUrl || !supabaseAnonKey) {
-        setError('Supabase is not properly configured. Please check environment variables.')
-        console.error('❌ Missing Supabase configuration')
-        return
-      }
-      
-      console.log('🔌 Supabase URL:', supabaseUrl)
-      
-      const { data, error } = await supabase.auth.signInWithPassword({
+      console.log('🔐 Attempting login with:', { email });
+      console.log('🔌 Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL);
+
+      // Sign in
+      const { data: authData, error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,
-      })
+      });
 
-      if (error) {
-        console.error('❌ Login error:', error)
-        let errorMessage = error.message
-        
-        // Provide more specific error messages
-        if (error.status === 400) {
-          errorMessage = 'Invalid email or password format'
-        } else if (error.status === 401) {
-          errorMessage = 'Invalid email or password. Please check your credentials.'
-        } else if (error.status === 429) {
-          errorMessage = 'Too many login attempts. Please try again later.'
-        } else if (error.message.includes('Invalid login credentials')) {
-          errorMessage = 'Invalid email or password. If you\'re a test user, make sure the test users have been created.'
-        }
-        
-        setError(errorMessage)
-        return
+      if (signInError) {
+        console.error('❌ Login error:', signInError);
+        throw signInError;
       }
 
-      console.log('✅ Login successful:', { userId: data.user?.id, email: data.user?.email })
+      console.log('✅ Login successful:', authData.user);
 
-      if (data.user) {
-        // Get user profile to check role with better error handling
-        console.log('👤 Fetching user profile...')
-        
-        let profile = null;
-        let profileError = null;
-        
-        try {
-          const result = await supabase
-            .from('user_profiles')
-            .select('*')
-            .eq('user_id', data.user.id)
-            .maybeSingle(); // Use maybeSingle instead of single
-          
-          profile = result.data;
-          profileError = result.error;
-        } catch (err) {
-          console.error('❌ Profile query error:', err);
-          profileError = err;
-        }
+      // Get fresh session
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        throw new Error('No session after login');
+      }
 
-        if (profileError) {
-          // Only log as error if it's not a "no rows returned" error (which is expected)
-          if (profileError.code !== 'PGRST116') {
-            console.error('❌ Profile fetch error:', profileError)
-            console.error('❌ Error details:', {
-              code: profileError.code,
-              message: profileError.message,
-              details: profileError.details
-            })
+      console.log('👤 Fetching user profile...');
+
+      // Fetch profile with retry logic
+      let retries = 3;
+      let profile = null;
+      let profileError = null;
+
+      while (retries > 0 && !profile) {
+        const { data, error } = await supabase
+          .from('user_profiles')
+          .select('*')
+          .eq('user_id', authData.user.id)
+          .maybeSingle();
+
+        if (error) {
+          profileError = error;
+          console.error(`❌ Profile fetch error (attempt ${4 - retries}):`, error);
+          console.error('❌ Error details:', {
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+            code: error.code
+          });
+          retries--;
+          if (retries > 0) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
           }
-          
-          // If profile doesn't exist, create one automatically
-          if (profileError.code === 'PGRST116' || !profile) {
-            console.log('📝 Creating missing user profile...')
-            const { error: createError } = await supabase
-              .from('user_profiles')
-              .insert({
-                user_id: data.user.id,
-                email: data.user.email || 'unknown@example.com',
-                full_name: data.user.user_metadata?.full_name || data.user.user_metadata?.name || data.user.email?.split('@')[0] || 'User',
-                role: 'user' // Default role for auto-created profiles
-              })
-              .select()
-              .single()
-             
-            if (createError) {
-              console.error('❌ Failed to create profile:', createError)
-              setError('Login successful but failed to create user profile. Please contact administrator.')
-              return
-            }
-             
-            console.log('✅ User profile created successfully')
-            profile = { role: 'user' }; // Use the created profile
-          } else {
-            console.error('❌ Other profile error:', profileError)
-            setError('Login successful but failed to fetch user profile. Please contact administrator.')
-            return
-          }
-        }
-
-        console.log('✅ User profile found:', { role: profile?.role })
-
-        // Redirect based on role
-        if (profile?.role === 'admin') {
-          console.log('👑 Redirecting to admin dashboard...')
-          router.push('/admin')
         } else {
-          console.log('🏠 Redirecting to dashboard...')
-          router.push('/dashboard')
+          profile = data;
+          break;
         }
       }
-    } catch (error) {
-      console.error('💥 Unexpected login error:', error)
-      setError('An unexpected error occurred. Please try again.')
+
+      // If still no profile, try to create one
+      if (!profile && profileError) {
+        console.log('📝 Creating missing user profile...');
+        
+        const { data: newProfile, error: createError } = await supabase
+          .from('user_profiles')
+          .insert({
+            user_id: authData.user.id,
+            email: authData.user.email,
+            full_name: authData.user.user_metadata?.full_name || 
+                       authData.user.email?.split('@')[0] || 
+                       'User',
+            role: 'user'
+          })
+          .select()
+          .single();
+
+        if (createError) {
+          console.error('❌ Failed to create profile:', createError);
+          console.error('❌ Create error details:', {
+            message: createError.message,
+            details: createError.details,
+            hint: createError.hint,
+            code: createError.code
+          });
+          throw new Error('Could not create user profile. Please contact support.');
+        }
+
+        console.log('✅ Profile created:', newProfile);
+        profile = newProfile;
+      }
+
+      console.log('✅ Profile loaded:', profile);
+      
+      // Redirect based on role
+      if (profile?.role === 'admin') {
+        console.log('👑 Redirecting to admin dashboard...');
+        router.push('/admin');
+      } else {
+        console.log('🏠 Redirecting to dashboard...');
+        router.push('/dashboard');
+      }
+      
+      console.log('🎉 Login complete, redirecting...');
+    } catch (err: any) {
+      console.error('❌ Login process failed:', err);
+      setError(err.message || 'An error occurred during login');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
