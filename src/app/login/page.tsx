@@ -64,53 +64,59 @@ export default function LoginPage() {
       console.log('✅ Login successful:', { userId: data.user?.id, email: data.user?.email })
 
       if (data.user) {
-        // Get user profile to check role
+        // Get user profile to check role with better error handling
         console.log('👤 Fetching user profile...')
-        const { data: profile, error: profileError } = await supabase
-          .from('user_profiles')
-          .select('role')
-          .eq('user_id', data.user.id)
-          .single()
+        
+        let profile = null;
+        let profileError = null;
+        
+        try {
+          const result = await supabase
+            .from('user_profiles')
+            .select('*')
+            .eq('user_id', data.user.id)
+            .maybeSingle(); // Use maybeSingle instead of single
+          
+          profile = result.data;
+          profileError = result.error;
+        } catch (err) {
+          console.error('❌ Profile query error:', err);
+          profileError = err;
+        }
 
         if (profileError) {
-          console.error('❌ Profile fetch error:', profileError)
+          // Only log as error if it's not a "no rows returned" error (which is expected)
+          if (profileError.code !== 'PGRST116') {
+            console.error('❌ Profile fetch error:', profileError)
+            console.error('❌ Error details:', {
+              code: profileError.code,
+              message: profileError.message,
+              details: profileError.details
+            })
+          }
           
           // If profile doesn't exist, create one automatically
-          if (profileError.code === 'PGRST116') {
+          if (profileError.code === 'PGRST116' || !profile) {
             console.log('📝 Creating missing user profile...')
             const { error: createError } = await supabase
               .from('user_profiles')
               .insert({
                 user_id: data.user.id,
                 email: data.user.email || 'unknown@example.com',
-                full_name: data.user.user_metadata?.name || 'User',
+                full_name: data.user.user_metadata?.full_name || data.user.user_metadata?.name || data.user.email?.split('@')[0] || 'User',
                 role: 'user' // Default role for auto-created profiles
               })
-            
+              .select()
+              .single()
+             
             if (createError) {
               console.error('❌ Failed to create profile:', createError)
               setError('Login successful but failed to create user profile. Please contact administrator.')
               return
             }
-            
+             
             console.log('✅ User profile created successfully')
-            // Try fetching again
-            const { data: newProfile, error: retryError } = await supabase
-              .from('user_profiles')
-              .select('role')
-              .eq('user_id', data.user.id)
-              .single()
-              
-            if (retryError) {
-              console.error('❌ Still failed to fetch profile:', retryError)
-              setError('Login successful but failed to fetch user profile after creation. Please contact administrator.')
-              return
-            }
-            
-            // Redirect all users to dashboard first
-            console.log('🏠 Redirecting to dashboard...')
-            router.push('/dashboard')
-            return
+            profile = { role: 'user' }; // Use the created profile
           } else {
             console.error('❌ Other profile error:', profileError)
             setError('Login successful but failed to fetch user profile. Please contact administrator.')
@@ -120,9 +126,14 @@ export default function LoginPage() {
 
         console.log('✅ User profile found:', { role: profile?.role })
 
-        // Redirect all users to dashboard - admin access will be available from there
-        console.log('🏠 Redirecting to dashboard...')
-        router.push('/dashboard')
+        // Redirect based on role
+        if (profile?.role === 'admin') {
+          console.log('👑 Redirecting to admin dashboard...')
+          router.push('/admin')
+        } else {
+          console.log('🏠 Redirecting to dashboard...')
+          router.push('/dashboard')
+        }
       }
     } catch (error) {
       console.error('💥 Unexpected login error:', error)
