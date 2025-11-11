@@ -1,26 +1,26 @@
 "use client"
 
 import { useState, useEffect } from "react";
-import { Suspense } from "react";
-import { ClientSafeSidebar } from "@/components/client-safe-sidebar"
-import { SiteHeader } from "@/components/site-header"
-import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
+import { useRouter } from "next/navigation";
+import { createClient } from '@/lib/supabase/client'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Users, Shield, Settings, Search, Filter, UserPlus, Mail, Key, Database, TrendingUp, BarChart3, UserCheck, UserX, Settings2, Activity } from "lucide-react";
+import { Label } from "@/components/ui/label"
+import { Badge } from "@/components/ui/badge"
+import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar'
+import { AppSidebar } from '@/components/app-sidebar'
+import { Users, UserPlus, Mail, Shield } from "lucide-react"
 
-interface User {
+interface UserProfile {
   id: string;
-  name?: string;
-  email?: string;
-  status: string;
-  role: string;
-  created_at?: string;
-  joined?: string;
+  user_id: string;
+  email: string;
+  full_name?: string | null;
+  role: 'admin' | 'user';
+  last_login_at?: string | null;
+  created_at: string;
+  updated_at: string;
   auth_user?: {
     email?: string;
     created_at?: string;
@@ -28,804 +28,335 @@ interface User {
   };
 }
 
-interface Invite {
-  id: string;
-  email?: string;
-  code: string;
-  used: boolean;
-  created_at?: string;
-  expires_at?: string;
-  notes?: string;
-}
-
-interface DashboardStats {
-  users: {
-    total: number;
-    active: number;
-    pending: number;
-    admins: number;
-    new_this_month: number;
-  };
-  invites: {
-    total: number;
-    active: number;
-    used: number;
-  };
-  campaigns: {
-    total: number;
-    active: number;
-    completed: number;
-    total_messages: number;
-    messages_today: number;
-  };
-  system_health: {
-    database: string;
-    auth: string;
-    storage: string;
-    realtime: string;
-  };
-  recent_activity: Array<{
-    id: number;
-    type: string;
-    message: string;
-    timestamp: string;
-  }>;
-}
-
 export default function AdminPage() {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [users, setUsers] = useState<User[]>([]);
-  const [invites, setInvites] = useState<Invite[]>([]);
-  const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
-  const [pendingUsers, setPendingUsers] = useState<User[]>([]);
+  const router = useRouter();
+  const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
-  const [inviteForm, setInviteForm] = useState({
+  const [userForm, setUserForm] = useState({
     email: '',
-    role: 'user',
-    message: ''
+    password: '',
+    full_name: '',
+    role: 'user'
   });
-  const [inviteLoading, setInviteLoading] = useState(false);
+  const [createLoading, setCreateLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
-  // Fetch real data on component mount
+  const supabase = createClient();
+
+  // Check if current user is admin
   useEffect(() => {
-    fetchDashboardData();
+    const checkAdminAccess = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) {
+        router.push('/login');
+        return;
+      }
+
+      // Get user profile to check if admin
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('role')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!profile || profile.role !== 'admin') {
+        router.push('/dashboard');
+        return;
+      }
+
+      // User is admin, fetch users
+      await fetchUsers();
+    };
+
+    checkAdminAccess();
   }, []);
 
-  const fetchDashboardData = async () => {
+  const fetchUsers = async () => {
     try {
-      setLoading(true);
+      const { data: usersData, error } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-      // Fetch all required data in parallel
-      const [
-        usersResponse,
-        invitesResponse,
-        dashboardResponse,
-        pendingUsersResponse
-      ] = await Promise.all([
-        fetch('/api/admin/users'),
-        fetch('/api/invites'),
-        fetch('/api/admin/dashboard/stats'),
-        fetch('/api/admin/users/pending')
-      ]);
-
-      // Handle responses with better error handling
-      if (usersResponse.ok) {
-        const usersData = await usersResponse.json();
-        setUsers(usersData.users || []);
-      }
-
-      if (invitesResponse.ok) {
-        const invitesData = await invitesResponse.json();
-        setInvites(invitesData.invites || []);
-      }
-
-      if (dashboardResponse.ok) {
-        const statsData = await dashboardResponse.json();
-        setDashboardStats(statsData);
-      }
-
-      if (pendingUsersResponse.ok) {
-        const pendingData = await pendingUsersResponse.json();
-        setPendingUsers(pendingData.pending_users || []);
+      if (error) {
+        console.error('Error fetching users:', error);
+      } else {
+        // Get auth user info for each profile
+        const usersWithAuth = await Promise.all(
+          (usersData || []).map(async (profile: any) => {
+            try {
+              const { data: authUser } = await supabase.auth.admin.getUserById(profile.user_id);
+              return {
+                ...profile,
+                auth_user: authUser.user ? {
+                  email: authUser.user.email,
+                  created_at: authUser.user.created_at,
+                  last_sign_in_at: authUser.user.last_sign_in_at
+                } : null
+              };
+            } catch (authError) {
+              return {
+                ...profile,
+                auth_user: null
+              };
+            }
+          })
+        );
+        setUsers(usersWithAuth);
       }
     } catch (error) {
-      console.error('Error fetching dashboard data:', error);
+      console.error('Error fetching users:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSendInvitation = async () => {
-    if (!inviteForm.email) {
-      alert('Please enter an email address');
-      return;
-    }
+  const handleCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCreateLoading(true);
+    setError('');
+    setSuccess('');
 
-    setInviteLoading(true);
     try {
-      const response = await fetch('/api/invites', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      // Create Supabase user
+      const { data: authUser, error: createError } = await supabase.auth.admin.createUser({
+        email: userForm.email,
+        password: userForm.password,
+        email_confirm: true,
+        user_metadata: {
+          full_name: userForm.full_name || '',
         },
-        body: JSON.stringify({
-          email: inviteForm.email,
-          role: inviteForm.role,
-          maxUses: 1,
-          expiresDays: 7,
-          notes: inviteForm.message || undefined,
-        }),
       });
 
-      const data = await response.json();
-
-      if (response.ok) {
-        // Clear form
-        setInviteForm({ email: '', role: 'user', message: '' });
-        // Refresh data
-        fetchDashboardData();
-        alert('Invitation sent successfully!');
-      } else {
-        alert(`Error: ${data.error || 'Failed to send invitation'}`);
+      if (createError) {
+        setError(createError.message);
+        return;
       }
-    } catch (error) {
-      console.error('Error sending invitation:', error);
-      alert('Failed to send invitation. Please try again.');
+
+      // Create user profile
+      const { data: userProfile, error: profileError } = await supabase
+        .from('user_profiles')
+        .insert({
+          user_id: authUser.user.id,
+          email: userForm.email,
+          full_name: userForm.full_name || null,
+          role: userForm.role,
+        })
+        .select()
+        .single();
+
+      if (profileError) {
+        // If profile creation fails, delete auth user to maintain consistency
+        await supabase.auth.admin.deleteUser(authUser.user.id);
+        setError(profileError.message);
+        return;
+      }
+
+      setSuccess('User created successfully!');
+      setUserForm({ email: '', password: '', full_name: '', role: 'user' });
+      await fetchUsers(); // Refresh users list
+
+    } catch (error: any) {
+      setError(error.message || 'Failed to create user');
     } finally {
-      setInviteLoading(false);
+      setCreateLoading(false);
     }
   };
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    router.push('/login');
+  };
+
+  if (loading) {
+    return (
+      <SidebarProvider>
+        <AppSidebar />
+        <SidebarInset>
+          <header className="flex h-16 shrink-0 items-center gap-2">
+            <SidebarTrigger className="-ml-1" />
+            <div className="flex items-center gap-2">
+              <h1 className="text-lg font-semibold">Admin Dashboard</h1>
+            </div>
+          </header>
+          <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+            <div className="flex items-center justify-center h-64">
+              <Card className="w-full max-w-md">
+                <CardContent className="p-6 text-center">
+                  <Shield className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h2 className="text-2xl font-semibold mb-2">Loading...</h2>
+                  <p className="text-muted-foreground">Please wait while we verify your access.</p>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </SidebarInset>
+      </SidebarProvider>
+    );
+  }
+
   return (
     <SidebarProvider>
-      <ClientSafeSidebar variant="inset" />
+      <AppSidebar />
       <SidebarInset>
-        <SiteHeader />
-        <div className="flex-1 min-h-screen bg-background">
-          <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-
-            {/* Header */}
-            <div className="mb-8 flex justify-between items-start">
-              <div>
-                <h1 className="text-3xl font-bold text-foreground">Admin Panel</h1>
-                <p className="text-muted-foreground mt-2">Manage users, system settings, and platform administration</p>
-              </div>
-              <Button
-                variant="outline"
-                onClick={fetchDashboardData}
-                disabled={loading}
-                className="flex items-center gap-2"
-              >
-                <Activity className="h-4 w-4" />
-                {loading ? 'Refreshing...' : 'Refresh Data'}
-              </Button>
-            </div>
-
-            {/* Main Tabbed Interface */}
-            <Tabs defaultValue="overview" className="w-full">
-              <TabsList className="grid w-full grid-cols-5">
-                <TabsTrigger value="overview">Overview</TabsTrigger>
-                <TabsTrigger value="invite">Invite User</TabsTrigger>
-                <TabsTrigger value="requests">User Requests</TabsTrigger>
-                <TabsTrigger value="roles">User Roles</TabsTrigger>
-                <TabsTrigger value="database">Database Status</TabsTrigger>
-              </TabsList>
-
-              {/* Overview Tab */}
-              <TabsContent value="overview" className="space-y-6">
-                {/* Quick Stats */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                  <Card className="border bg-card shadow-sm">
-                    <CardContent className="p-6">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-muted-foreground">Total Users</p>
-                          <p className="text-2xl font-bold text-foreground mt-1">
-                            {loading ? '...' : (dashboardStats?.users.total || users.length)}
-                          </p>
-                        </div>
-                        <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
-                          <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="border bg-card shadow-sm">
-                    <CardContent className="p-6">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-muted-foreground">Active Users</p>
-                          <p className="text-2xl font-bold text-foreground mt-1">
-                            {loading ? '...' : (dashboardStats?.users.active || users.filter(u => u.status === 'approved').length)}
-                          </p>
-                        </div>
-                        <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
-                          <TrendingUp className="h-5 w-5 text-green-600 dark:text-green-400" />
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="border bg-card shadow-sm">
-                    <CardContent className="p-6">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-muted-foreground">Pending Approval</p>
-                          <p className="text-2xl font-bold text-foreground mt-1">
-                            {loading ? '...' : (dashboardStats?.users.pending || pendingUsers.length)}
-                          </p>
-                        </div>
-                        <div className="p-2 bg-yellow-100 dark:bg-yellow-900/20 rounded-lg">
-                          <Shield className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="border bg-card shadow-sm">
-                    <CardContent className="p-6">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-muted-foreground">Active Invites</p>
-                          <p className="text-2xl font-bold text-foreground mt-1">
-                            {loading ? '...' : (dashboardStats?.invites.active || invites.filter(i => !i.used).length)}
-                          </p>
-                        </div>
-                        <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
-                          <Mail className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                {/* System Overview */}
-                <Card className="border bg-card shadow-sm">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Activity className="h-5 w-5 text-muted-foreground" />
-                      System Overview
-                    </CardTitle>
-                    <CardDescription>
-                      Platform health and performance metrics
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-4">
-                        <h4 className="font-medium text-foreground">System Health</h4>
-                        <div className="space-y-3">
-                          <div className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
-                            <span className="text-sm text-muted-foreground">Database</span>
-                            <Badge className={
-                              dashboardStats?.system_health.database === 'healthy'
-                                ? 'bg-green-100 text-green-800'
-                                : 'bg-red-100 text-red-800'
-                            }>
-                              {loading ? '...' : (dashboardStats?.system_health.database || 'Unknown')}
-                            </Badge>
-                          </div>
-                          <div className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
-                            <span className="text-sm text-muted-foreground">Authentication</span>
-                            <Badge className={
-                              dashboardStats?.system_health.auth === 'active'
-                                ? 'bg-green-100 text-green-800'
-                                : 'bg-red-100 text-red-800'
-                            }>
-                              {loading ? '...' : (dashboardStats?.system_health.auth || 'Unknown')}
-                            </Badge>
-                          </div>
-                          <div className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
-                            <span className="text-sm text-muted-foreground">Storage</span>
-                            <Badge className={
-                              dashboardStats?.system_health.storage === 'available'
-                                ? 'bg-green-100 text-green-800'
-                                : 'bg-yellow-100 text-yellow-800'
-                            }>
-                              {loading ? '...' : (dashboardStats?.system_health.storage || 'Unknown')}
-                            </Badge>
-                          </div>
-                          <div className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
-                            <span className="text-sm text-muted-foreground">Real-time</span>
-                            <Badge className={
-                              dashboardStats?.system_health.realtime === 'connected'
-                                ? 'bg-green-100 text-green-800'
-                                : 'bg-red-100 text-red-800'
-                            }>
-                              {loading ? '...' : (dashboardStats?.system_health.realtime || 'Unknown')}
-                            </Badge>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="space-y-4">
-                        <h4 className="font-medium text-foreground">Recent Activity</h4>
-                        <div className="space-y-3">
-                          {loading ? (
-                            <div className="p-3 bg-muted/50 rounded-lg">
-                              <div className="text-sm text-muted-foreground">Loading activity...</div>
-                            </div>
-                          ) : dashboardStats?.recent_activity?.length > 0 ? (
-                            dashboardStats.recent_activity.slice(0, 3).map((activity) => (
-                              <div key={activity.id} className="p-3 bg-muted/50 rounded-lg">
-                                <div className="text-sm text-foreground">{activity.message}</div>
-                                <div className="text-xs text-muted-foreground">
-                                  {new Date(activity.timestamp).toLocaleString()}
-                                </div>
-                              </div>
-                            ))
-                          ) : (
-                            <div className="p-3 bg-muted/50 rounded-lg">
-                              <div className="text-sm text-muted-foreground">No recent activity</div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              {/* Invite User Tab */}
-              <TabsContent value="invite" className="space-y-6">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Invite Form */}
-                  <Card className="border bg-card shadow-sm">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <UserPlus className="h-5 w-5 text-muted-foreground" />
-                        Send Invitation
-                      </CardTitle>
-                      <CardDescription>
-                        Invite a new user to join the platform
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-foreground">Email Address</label>
-                        <Input
-                          type="email"
-                          placeholder="user@example.com"
-                          className="border border-border"
-                          value={inviteForm.email}
-                          onChange={(e) => setInviteForm(prev => ({ ...prev, email: e.target.value }))}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-foreground">Role</label>
-                        <Select
-                          value={inviteForm.role}
-                          onValueChange={(value) => setInviteForm(prev => ({ ...prev, role: value }))}
-                        >
-                          <SelectTrigger className="border border-border">
-                            <SelectValue placeholder="Select role" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="user">User</SelectItem>
-                            <SelectItem value="admin">Admin</SelectItem>
-                            <SelectItem value="moderator">Moderator</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-foreground">Message (Optional)</label>
-                        <textarea
-                          placeholder="Add a personal message to the invitation"
-                          className="w-full p-3 border border-border rounded-md resize-none h-24"
-                          value={inviteForm.message}
-                          onChange={(e) => setInviteForm(prev => ({ ...prev, message: e.target.value }))}
-                        />
-                      </div>
-                      <Button
-                        className="w-full"
-                        onClick={handleSendInvitation}
-                        disabled={inviteLoading || !inviteForm.email}
-                      >
-                        {inviteLoading ? 'Sending...' : 'Send Invitation'}
-                      </Button>
-                    </CardContent>
-                  </Card>
-
-                  {/* Active Invites */}
-                  <Card className="border bg-card shadow-sm">
-                    <CardHeader>
-                      <CardTitle>Active Invitations</CardTitle>
-                      <CardDescription>
-                        Currently pending invitations
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-3">
-                        {loading ? (
-                          <div className="p-3 bg-muted/50 rounded-lg">
-                            <div className="text-sm text-muted-foreground">Loading invitations...</div>
-                          </div>
-                        ) : invites.filter(i => !i.used).length > 0 ? (
-                          invites.filter(i => !i.used).map((invite) => (
-                            <div key={invite.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                              <div>
-                                <div className="text-sm font-medium text-foreground">
-                                  {invite.email || 'General invitation'}
-                                </div>
-                                <div className="text-xs text-muted-foreground">
-                                  Code: {invite.code}
-                                  {invite.expires_at && ` • Expires: ${new Date(invite.expires_at).toLocaleDateString()}`}
-                                </div>
-                                {invite.notes && (
-                                  <div className="text-xs text-muted-foreground mt-1">Notes: {invite.notes}</div>
-                                )}
-                              </div>
-                              <Button size="sm" variant="outline">Revoke</Button>
-                            </div>
-                          ))
-                        ) : (
-                          <div className="p-3 bg-muted/50 rounded-lg">
-                            <div className="text-sm text-muted-foreground">No active invitations</div>
-                          </div>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              </TabsContent>
-
-              {/* User Requests Tab */}
-              <TabsContent value="requests" className="space-y-6">
-                <Card className="border bg-card shadow-sm">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <UserCheck className="h-5 w-5 text-muted-foreground" />
-                      Pending User Approvals
-                    </CardTitle>
-                    <CardDescription>
-                      Review and approve user registration requests
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {loading ? (
-                        <div className="p-4 bg-muted/50 rounded-lg">
-                          <div className="text-sm text-muted-foreground">Loading pending users...</div>
-                        </div>
-                      ) : pendingUsers.length > 0 ? (
-                        pendingUsers.map((user) => (
-                          <div key={user.id} className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
-                            <div>
-                              <div className="font-medium text-foreground">
-                                {user.auth_user?.email ? user.auth_user.email.split('@')[0] : 'Unknown User'}
-                              </div>
-                              <div className="text-sm text-muted-foreground">
-                                {user.auth_user?.email || 'No email available'}
-                              </div>
-                              <div className="text-xs text-muted-foreground mt-1">
-                                Requested: {user.created_at ? new Date(user.created_at).toLocaleDateString() : 'Unknown date'}
-                              </div>
-                              {user.auth_user?.last_sign_in_at && (
-                                <div className="text-xs text-muted-foreground">
-                                  Last seen: {new Date(user.auth_user.last_sign_in_at).toLocaleDateString()}
-                                </div>
-                              )}
-                            </div>
-                            <div className="flex gap-2">
-                              <Button
-                                size="sm"
-                                className="bg-green-600 hover:bg-green-700"
-                                onClick={async () => {
-                                  try {
-                                    const response = await fetch('/api/admin/users/approve', {
-                                      method: 'POST',
-                                      headers: { 'Content-Type': 'application/json' },
-                                      body: JSON.stringify({ userId: user.id })
-                                    });
-                                    if (response.ok) {
-                                      fetchDashboardData(); // Refresh data
-                                    }
-                                  } catch (error) {
-                                    console.error('Error approving user:', error);
-                                  }
-                                }}
-                              >
-                                <UserCheck className="h-4 w-4 mr-1" />
-                                Approve
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={async () => {
-                                  try {
-                                    const response = await fetch('/api/admin/users/reject', {
-                                      method: 'POST',
-                                      headers: { 'Content-Type': 'application/json' },
-                                      body: JSON.stringify({ userId: user.id })
-                                    });
-                                    if (response.ok) {
-                                      fetchDashboardData(); // Refresh data
-                                    }
-                                  } catch (error) {
-                                    console.error('Error rejecting user:', error);
-                                  }
-                                }}
-                              >
-                                <UserX className="h-4 w-4 mr-1" />
-                                Reject
-                              </Button>
-                            </div>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="p-4 bg-muted/50 rounded-lg">
-                          <div className="text-sm text-muted-foreground text-center">
-                            No pending user approvals
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              {/* User Roles Tab */}
-              <TabsContent value="roles" className="space-y-6">
-                <Card className="border bg-card shadow-sm">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Settings2 className="h-5 w-5 text-muted-foreground" />
-                      User Role Management
-                    </CardTitle>
-                    <CardDescription>
-                      Manage user roles and permissions
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {/* Search and Filter */}
-                    <div className="flex flex-col lg:flex-row lg:items-center gap-4 mb-6">
-                      <div className="relative flex-1">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                        <Input
-                          placeholder="Search users by name or email..."
-                          value={searchTerm}
-                          onChange={(e) => setSearchTerm(e.target.value)}
-                          className="pl-10 h-11 border border-border"
-                        />
-                      </div>
-                      <div className="flex gap-3">
-                        <Select value={statusFilter} onValueChange={setStatusFilter}>
-                          <SelectTrigger className="w-40 h-11 border border-border">
-                            <SelectValue placeholder="Status" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">All Status</SelectItem>
-                            <SelectItem value="active">Active</SelectItem>
-                            <SelectItem value="pending">Pending</SelectItem>
-                            <SelectItem value="inactive">Inactive</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
-                    {/* Users Table */}
-                    <div className="rounded-md border">
-                      <div className="overflow-x-auto">
-                        <table className="w-full">
-                          <thead>
-                            <tr className="border-b bg-muted/50">
-                              <th className="text-left p-4 font-medium text-foreground">User</th>
-                              <th className="text-left p-4 font-medium text-foreground">Status</th>
-                              <th className="text-left p-4 font-medium text-foreground">Current Role</th>
-                              <th className="text-left p-4 font-medium text-foreground">Actions</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {loading ? (
-                              <tr>
-                                <td colSpan={4} className="p-4 text-center text-muted-foreground">
-                                  Loading users...
-                                </td>
-                              </tr>
-                            ) : users.length > 0 ? (
-                              users.map((user) => (
-                                <tr key={user.id} className="border-b hover:bg-muted/30">
-                                  <td className="p-4">
-                                    <div>
-                                      <div className="font-medium text-foreground">
-                                        {user.auth_user?.email ? user.auth_user.email.split('@')[0] : 'Unknown User'}
-                                      </div>
-                                      <div className="text-sm text-muted-foreground">
-                                        {user.auth_user?.email || 'No email available'}
-                                      </div>
-                                    </div>
-                                  </td>
-                                  <td className="p-4">
-                                    <Badge className={
-                                      user.status === 'approved' ? 'bg-green-100 text-green-800' :
-                                      user.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                                      'bg-gray-100 text-gray-800'
-                                    }>
-                                      {user.status}
-                                    </Badge>
-                                  </td>
-                                  <td className="p-4">
-                                    <span className="text-sm text-muted-foreground capitalize">
-                                      {user.role || 'user'}
-                                    </span>
-                                  </td>
-                                  <td className="p-4">
-                                    <div className="flex gap-2">
-                                      <Select
-                                        defaultValue={user.role || 'user'}
-                                        onValueChange={async (newRole) => {
-                                          try {
-                                            const response = await fetch('/api/admin/users', {
-                                              method: 'PATCH',
-                                              headers: { 'Content-Type': 'application/json' },
-                                              body: JSON.stringify({
-                                                userId: user.id,
-                                                action: 'update_role',
-                                                role: newRole
-                                              })
-                                            });
-                                            if (response.ok) {
-                                              fetchDashboardData(); // Refresh data
-                                            }
-                                          } catch (error) {
-                                            console.error('Error updating user role:', error);
-                                          }
-                                        }}
-                                      >
-                                        <SelectTrigger className="w-32">
-                                          <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          <SelectItem value="user">User</SelectItem>
-                                          <SelectItem value="admin">Admin</SelectItem>
-                                          <SelectItem value="moderator">Moderator</SelectItem>
-                                        </SelectContent>
-                                      </Select>
-                                    </div>
-                                  </td>
-                                </tr>
-                              ))
-                            ) : (
-                              <tr>
-                                <td colSpan={4} className="p-4 text-center text-muted-foreground">
-                                  No users found
-                                </td>
-                              </tr>
-                            )}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-
-                    {/* Role Definitions */}
-                    <div className="mt-6 p-4 bg-muted/30 rounded-lg">
-                      <h4 className="font-medium text-foreground mb-3">Role Permissions</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                          <h5 className="font-medium text-foreground mb-2">User</h5>
-                          <p className="text-sm text-muted-foreground">Can view campaigns, create messages, and manage own content</p>
-                        </div>
-                        <div>
-                          <h5 className="font-medium text-foreground mb-2">Moderator</h5>
-                          <p className="text-sm text-muted-foreground">Can manage campaigns and approve content, plus all user permissions</p>
-                        </div>
-                        <div>
-                          <h5 className="font-medium text-foreground mb-2">Admin</h5>
-                          <p className="text-sm text-muted-foreground">Full system access including user management and system settings</p>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              {/* Database Status Tab */}
-              <TabsContent value="database" className="space-y-6">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Connection Status */}
-                  <Card className="border bg-card shadow-sm">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Database className="h-5 w-5 text-muted-foreground" />
-                        Connection Status
-                      </CardTitle>
-                      <CardDescription>
-                        Database and service connectivity
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
-                        <span className="text-sm font-medium text-foreground">Database</span>
-                        <Badge className="bg-green-100 text-green-800">Connected</Badge>
-                      </div>
-                      <div className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
-                        <span className="text-sm font-medium text-foreground">Supabase Auth</span>
-                        <Badge className="bg-green-100 text-green-800">Active</Badge>
-                      </div>
-                      <div className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
-                        <span className="text-sm font-medium text-foreground">Storage</span>
-                        <Badge className="bg-green-100 text-green-800">Available</Badge>
-                      </div>
-                      <div className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
-                        <span className="text-sm font-medium text-foreground">Real-time</span>
-                        <Badge className="bg-green-100 text-green-800">Connected</Badge>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* Database Statistics */}
-                  <Card className="border bg-card shadow-sm">
-                    <CardHeader>
-                      <CardTitle>Database Statistics</CardTitle>
-                      <CardDescription>
-                        Current database metrics
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
-                        <span className="text-sm font-medium text-foreground">Total Users</span>
-                        <span className="text-sm font-bold text-foreground">
-                          {loading ? '...' : (dashboardStats?.users.total || users.length)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
-                        <span className="text-sm font-medium text-foreground">Active Campaigns</span>
-                        <span className="text-sm font-bold text-foreground">
-                          {loading ? '...' : (dashboardStats?.campaigns.active || 0)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
-                        <span className="text-sm font-medium text-foreground">Total Messages</span>
-                        <span className="text-sm font-bold text-foreground">
-                          {loading ? '...' : (dashboardStats?.campaigns.total_messages || 0)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
-                        <span className="text-sm font-medium text-foreground">Active Invites</span>
-                        <span className="text-sm font-bold text-foreground">
-                          {loading ? '...' : (dashboardStats?.invites.active || invites.filter(i => !i.used).length)}
-                        </span>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                {/* System Health Metrics */}
-                <Card className="border bg-card shadow-sm">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Activity className="h-5 w-5 text-muted-foreground" />
-                      System Health Metrics
-                    </CardTitle>
-                    <CardDescription>
-                      Performance and usage monitoring
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                      <div className="p-4 bg-muted/50 rounded-lg text-center">
-                        <div className="text-2xl font-bold text-green-600">99.9%</div>
-                        <div className="text-sm text-muted-foreground mt-1">Uptime</div>
-                      </div>
-                      <div className="p-4 bg-muted/50 rounded-lg text-center">
-                        <div className="text-2xl font-bold text-blue-600">142ms</div>
-                        <div className="text-sm text-muted-foreground mt-1">Avg Response</div>
-                      </div>
-                      <div className="p-4 bg-muted/50 rounded-lg text-center">
-                        <div className="text-2xl font-bold text-purple-600">1,234</div>
-                        <div className="text-sm text-muted-foreground mt-1">API Calls Today</div>
-                      </div>
-                      <div className="p-4 bg-muted/50 rounded-lg text-center">
-                        <div className="text-2xl font-bold text-orange-600">0.2%</div>
-                        <div className="text-sm text-muted-foreground mt-1">Error Rate</div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            </Tabs>
+        <header className="flex h-16 shrink-0 items-center gap-2">
+          <SidebarTrigger className="-ml-1" />
+          <div className="flex items-center gap-2">
+            <h1 className="text-lg font-semibold">Admin Dashboard</h1>
           </div>
+          <div className="ml-auto">
+            <Button variant="outline" onClick={handleLogout}>
+              Sign Out
+            </Button>
+          </div>
+        </header>
+        <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+
+          {/* Create User Form */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <UserPlus className="h-5 w-5 text-muted-foreground" />
+                Create New User
+              </CardTitle>
+              <CardDescription>
+                Add a new user to the system
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleCreateUser} className="space-y-4">
+                {error && (
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+                    <p className="text-sm text-red-800">{error}</p>
+                  </div>
+                )}
+
+                {success && (
+                  <div className="p-3 bg-green-50 border border-green-200 rounded-md">
+                    <p className="text-sm text-green-800">{success}</p>
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <Label htmlFor="full_name">Full Name</Label>
+                  <Input
+                    id="full_name"
+                    type="text"
+                    placeholder="John Doe"
+                    value={userForm.full_name}
+                    onChange={(e) => setUserForm(prev => ({ ...prev, full_name: e.target.value }))}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email Address</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="user@example.com"
+                    value={userForm.email}
+                    onChange={(e) => setUserForm(prev => ({ ...prev, email: e.target.value }))}
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="password">Password</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="•••••••••••"
+                    value={userForm.password}
+                    onChange={(e) => setUserForm(prev => ({ ...prev, password: e.target.value }))}
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="role">Role</Label>
+                  <select
+                    id="role"
+                    value={userForm.role}
+                    onChange={(e) => setUserForm(prev => ({ ...prev, role: e.target.value }))}
+                    className="w-full p-2 border border-gray-300 rounded-md"
+                  >
+                    <option value="user">User</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                </div>
+
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={createLoading}
+                >
+                  {createLoading ? 'Creating User...' : 'Create User'}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+
+          {/* Users List */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5 text-muted-foreground" />
+                System Users ({users.length})
+              </CardTitle>
+              <CardDescription>
+                Manage all registered users
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {users.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-muted-foreground mb-2">No users found</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Create your first user to get started
+                    </p>
+                  </div>
+                ) : (
+                  users.map((user) => (
+                    <div key={user.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <div className="font-medium text-gray-900">
+                            {user.full_name || user.email?.split('@')[0] || 'Unknown User'}
+                          </div>
+                          <Badge className={
+                            user.role === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'
+                          }>
+                            {user.role}
+                          </Badge>
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          {user.email}
+                        </div>
+                        <div className="text-xs text-gray-400 mt-1">
+                          Created: {new Date(user.created_at).toLocaleDateString()}
+                          {user.last_login_at && ` • Last login: ${new Date(user.last_login_at).toLocaleDateString()}`}
+                        </div>
+                      </div>
+                      <div className="text-xs text-gray-400">
+                        {user.auth_user?.last_sign_in_at &&
+                          `Auth: ${new Date(user.auth_user.last_sign_in_at).toLocaleDateString()}`
+                        }
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
         </div>
       </SidebarInset>
     </SidebarProvider>
