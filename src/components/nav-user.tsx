@@ -1,5 +1,6 @@
 "use client"
 
+import { useRouter } from "next/navigation"
 import {
   BellIcon,
   CreditCardIcon,
@@ -28,6 +29,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
+import { createClient } from "@/lib/supabase/client"
 
 export function NavUser({
   user,
@@ -38,13 +40,27 @@ export function NavUser({
     avatar: string
   }
 }) {
+  const router = useRouter()
+  const supabase = createClient()
+  
   // Default user data if none provided
   const userDefaults = {
     name: user?.name || "User",
-    email: user?.email || "user@example.com", 
+    email: user?.email || "user@example.com",
     avatar: user?.avatar || ""
   }
   const { isMobile } = useSidebar()
+
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut()
+      router.push('/login')
+    } catch (error) {
+      console.error('Logout error:', error)
+      // Still redirect to login even if there's an error
+      router.push('/login')
+    }
+  }
 
   return (
     <SidebarMenu>
@@ -104,7 +120,7 @@ export function NavUser({
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={handleLogout}>
               <LogOutIcon />
               Log out
             </DropdownMenuItem>
