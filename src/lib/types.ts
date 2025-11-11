@@ -1,26 +1,22 @@
 /**
  * TypeScript types for database entities
- * These match the Supabase database schema
+ * Simplified for direct admin-controlled authentication
  */
 
 // Base types
 export type UserRole = 'admin' | 'user';
-export type UserStatus = 'pending' | 'approved' | 'rejected';
 export type CustomerStatus = 'active' | 'inactive';
 export type CampaignStatus = 'draft' | 'scheduled' | 'sending' | 'sent' | 'failed';
 export type MessageStatus = 'pending' | 'sent' | 'delivered' | 'failed';
 export type TemplateCategory = 'general' | 'marketing' | 'reminders' | 'alerts' | 'announcements';
 
-// User Profiles
+// User Profiles - Simplified
 export interface UserProfile {
   id: string;
   user_id: string;
+  email: string;
+  full_name?: string | null;
   role: UserRole;
-  status: UserStatus;
-  invited_by?: string | null;
-  invite_code?: string | null;
-  invited_at?: string | null;
-  approved_at?: string | null;
   last_login_at?: string | null;
   created_at: string;
   updated_at: string;
@@ -28,33 +24,16 @@ export interface UserProfile {
 
 export interface NewUserProfile {
   user_id: string;
+  email: string;
+  full_name?: string;
   role?: UserRole;
-  status?: UserStatus;
-  invited_by?: string;
-  invite_code?: string;
-  invited_at?: string;
-  approved_at?: string;
 }
 
-// Invite Codes
-export interface InviteCode {
-  id: string;
-  code: string;
-  created_by: string;
-  expires_at?: string | null;
-  created_at: string;
-  max_uses: number;
-  email?: string | null;
-  notes?: string | null;
-}
-
-export interface NewInviteCode {
-  code: string;
-  created_by: string;
-  expires_at?: string;
-  max_uses?: number;
-  email?: string;
-  notes?: string;
+export interface CreateUserRequest {
+  email: string;
+  password: string;
+  full_name?: string;
+  role?: UserRole;
 }
 
 // Customers

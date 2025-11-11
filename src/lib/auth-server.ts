@@ -28,8 +28,7 @@ export async function auth(request?: NextRequest) {
           const mockProfile = {
             id: 'mock-profile-id',
             user_id: mockUser.id,
-            role: 'admin',
-            status: 'approved'
+            role: 'admin'
           }
 
           console.log('🔐 Using mock authentication for development')
@@ -75,8 +74,7 @@ export async function auth(request?: NextRequest) {
         const mockProfile = {
           id: 'mock-profile-id',
           user_id: mockUser.id,
-          role: 'admin',
-          status: 'approved'
+          role: 'admin'
         }
 
         return {
@@ -111,17 +109,16 @@ export async function auth(request?: NextRequest) {
       return { userId: null, error: 'Invalid token' }
     }
 
-    // Check if user has an approved profile
+    // Check if user has a profile
     const { data: profile, error: profileError } = await supabaseAdmin
       .from('user_profiles')
       .select('*')
       .eq('user_id', user.id)
-      .eq('status', 'approved')
       .single()
 
     if (profileError || !profile) {
-      console.warn('User profile not found or not approved:', user.id)
-      return { userId: null, error: 'User not approved' }
+      console.warn('User profile not found:', user.id)
+      return { userId: null, error: 'User profile not found' }
     }
 
     return {

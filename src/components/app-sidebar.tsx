@@ -1,6 +1,6 @@
 "use client"
 
-import * as React from "react"
+import * as React from "react";
 import {
   LayoutDashboard,
   MessageSquare,
@@ -14,8 +14,7 @@ import {
   Calendar,
   FileText,
   Database,
-} from "lucide-react"
-
+} from "lucide-react";
 import { NavMain } from "@/components/nav-main"
 import { NavSecondary } from "@/components/nav-secondary"
 import { NavUser } from "@/components/nav-user"
@@ -28,15 +27,10 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
-} from "@/components/ui/sidebar"
+} from "@/components/ui/sidebar";
 
 // DNwerks SMS Campaign Management Navigation - Simplified & Organized
 const data = {
-  user: {
-    name: "Admin User",
-    email: "admin@dnwerks.com",
-    avatar: "/avatars/admin.jpg",
-  },
   navMain: [
     {
       title: "Dashboard",
@@ -65,17 +59,17 @@ const data = {
           title: "Scheduled",
           url: "/campaigns?filter=scheduled",
         },
+        {
+          title: "Reports",
+          url: "/dashboard/analytics",
+          icon: BarChart3,
+        },
       ],
     },
     {
-      title: "Reports",
-      url: "/dashboard/analytics",
-      icon: BarChart3,
-    },
-    {
-      title: "Contact Database",
+      title: "Contacts",
       url: "/contacts",
-      icon: Database,
+      icon: Phone,
       items: [
         {
           title: "All Contacts",
@@ -133,48 +127,61 @@ const data = {
         {
           title: "Admin Panel",
           url: "/admin",
+          icon: Shield,
         },
         {
           title: "User Management",
           url: "/admin/users",
+          icon: Users,
         },
         {
           title: "System Settings",
           url: "/admin/settings",
+          icon: Settings,
+        },
+      ],
+    },
+    {
+      title: "Help & Support",
+      url: "#",
+      icon: HelpCircle,
+      items: [
+        {
+          title: "Docs",
+          url: "/docs",
+          icon: FileText,
         },
       ],
     },
   ],
   navSecondary: [
     {
-      title: "Help & Support",
-      url: "#",
-      icon: HelpCircle,
-    },
-    {
-      title: "Docs",
+      title: "Documentation",
       url: "/docs",
       icon: FileText,
     },
+    {
+      title: "API Reference", 
+      url: "/api",
+      icon: Database,
+    },
   ],
-}
+};
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
         <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              asChild
-              className="data-[slot=sidebar-menu-button]:!p-2"
-            >
-              <a href="/dashboard">
-                <MessageSquare className="h-5 w-5" />
-                <span className="text-base font-semibold">DNwerks</span>
-              </a>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
+          <SidebarMenuButton size="lg" className="data-[sidebar-menu-button]:!p-2">
+            <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+              <span className="text-xl font-bold">D</span>
+            </div>
+            <div className="grid flex-1 text-left text-sm leading-tight">
+              <span className="truncate font-semibold">DNwerks</span>
+              <span className="truncate text-xs">SMS Dashboard</span>
+            </div>
+          </SidebarMenuButton>
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
@@ -182,9 +189,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={data.user} />
+        <NavUser />
+        <SidebarRail />
       </SidebarFooter>
-      <SidebarRail />
     </Sidebar>
-  )
+  );
 }

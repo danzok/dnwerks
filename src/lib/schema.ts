@@ -1,6 +1,6 @@
 /**
  * Re-export database types for consistency
- * This file acts as a schema entry point for the application
+ * Simplified schema for direct admin-controlled authentication
  */
 
 export * from './types';
@@ -12,16 +12,14 @@ export type {
   Customer,
   CampaignTemplate,
   UserProfile,
-  InviteCode,
   CampaignMessage,
   NewCampaign,
   NewCustomer,
   NewCampaignTemplate,
   NewUserProfile,
-  NewInviteCode,
   NewCampaignMessage,
+  CreateUserRequest,
   UserRole,
-  UserStatus,
   CustomerStatus,
   CampaignStatus,
   MessageStatus,
@@ -38,12 +36,10 @@ export type {
   CustomerUI,
   CampaignTemplateUI,
   UserProfileUI,
-  InviteCodeUI,
   CampaignMessageUI,
   NewCampaignUI,
   NewCustomerUI,
   NewCampaignTemplateUI,
   NewUserProfileUI,
-  NewInviteCodeUI,
   NewCampaignMessageUI
 } from './ui-types';
