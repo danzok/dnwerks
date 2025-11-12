@@ -22,7 +22,7 @@ export default function ActiveContactsPage() {
             <div className="mb-8">
               <div className="flex items-center gap-4 mb-4">
                 <Button asChild variant="ghost" size="icon">
-                  <Link href="/dashboard/customers">
+                  <Link href="/contacts">
                     <ArrowLeft />
                   </Link>
                 </Button>
@@ -118,7 +118,7 @@ export default function ActiveContactsPage() {
                     These contacts have shown recent activity and engagement with your campaigns
                   </p>
                   <div className="flex gap-4 justify-center">
-                    <Link href="/dashboard/customers">
+                    <Link href="/contacts">
                       <Button variant="outline">
                         View All Contacts
                       </Button>

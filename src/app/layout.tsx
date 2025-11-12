@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
-import { ThemeProvider } from "@/components/theme-provider"
+import { ThemeProvider as NextThemesProvider } from "next-themes"
 import { Footer } from "@/components/ui/footer"
 
 const inter = Inter({
@@ -23,7 +23,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} font-sans antialiased`}>
-        <ThemeProvider
+        <NextThemesProvider
           attribute="class"
           defaultTheme="system"
           enableSystem
@@ -35,7 +35,7 @@ export default function RootLayout({
             </div>
             <Footer />
           </div>
-        </ThemeProvider>
+        </NextThemesProvider>
       </body>
     </html>
   )

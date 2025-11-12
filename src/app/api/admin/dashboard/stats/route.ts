@@ -5,56 +5,6 @@ export async function GET() {
   const supabase = await createClient()
 
   try {
-    // For development, always return mock dashboard stats
-    return NextResponse.json({
-      users: {
-        total: 5,
-        active: 3,
-        pending: 2,
-        admins: 1,
-        new_this_month: 2,
-      },
-      invites: {
-        total: 8,
-        active: 3,
-        used: 5,
-      },
-      campaigns: {
-        total: 12,
-        active: 8,
-        completed: 4,
-        total_messages: 1247,
-        messages_today: 89,
-      },
-      system_health: {
-        database: 'healthy',
-        auth: 'active',
-        storage: 'available',
-        realtime: 'connected',
-      },
-      recent_activity: [
-        {
-          id: 1,
-          type: 'user_registered',
-          message: 'New user registered: John Doe',
-          timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-        },
-        {
-          id: 2,
-          type: 'campaign_completed',
-          message: 'Campaign completed: Spring Sale',
-          timestamp: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
-        },
-        {
-          id: 3,
-          type: 'invite_created',
-          message: 'New invite created: I1M2I5NM',
-          timestamp: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
-        },
-      ],
-      last_updated: new Date().toISOString(),
-    })
-
     // Get current user
     const { data: { user }, error: authError } = await supabase.auth.getUser()
 
@@ -92,42 +42,64 @@ export async function GET() {
     const activeInvites = invites?.filter((i: any) => !i.used && new Date(i.expires_at) > new Date()).length || 0
     const usedInvites = invites?.filter((i: any) => i.used).length || 0
 
-    // Get campaign statistics (mock data for now - would come from campaigns table)
+    // Get campaign statistics
+    const { data: campaigns } = await supabase
+      .from('campaigns')
+      .select('status, created_at')
+
+    const totalCampaigns = campaigns?.length || 0
+    const activeCampaigns = campaigns?.filter((c: any) => c.status === 'active').length || 0
+    const completedCampaigns = campaigns?.filter((c: any) => c.status === 'completed').length || 0
+
+    // Get message statistics
+    const { data: messages } = await supabase
+      .from('campaign_messages')
+      .select('sent_at')
+
+    const totalMessages = messages?.length || 0
+    const today = new Date().toISOString().split('T')[0]
+    const messagesToday = messages?.filter((m: any) =>
+      m.sent_at && m.sent_at.startsWith(today)
+    ).length || 0
+
     const campaignStats = {
-      total: 12,
-      active: 8,
-      completed: 4,
-      total_messages: 1247,
-      messages_today: 89,
+      total: totalCampaigns,
+      active: activeCampaigns,
+      completed: completedCampaigns,
+      total_messages: totalMessages,
+      messages_today: messagesToday,
     }
 
-    // Get recent activity (mock data for now)
+    // Get recent activity from user_profiles and invite_codes
+    const { data: recentUsers } = await supabase
+      .from('user_profiles')
+      .select('created_at, email')
+      .order('created_at', { ascending: false })
+      .limit(3)
+
+    const { data: recentInvites } = await supabase
+      .from('invite_codes')
+      .select('created_at, code, email')
+      .order('created_at', { ascending: false })
+      .limit(2)
+
     const recentActivity = [
-      {
-        id: 1,
+      // Recent user registrations
+      ...(recentUsers?.map((user: any, index: number) => ({
+        id: `user_${index}`,
         type: 'user_registered',
-        message: 'New user registered: John Doe',
-        timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
-      },
-      {
-        id: 2,
-        type: 'campaign_completed',
-        message: 'Campaign completed: Spring Sale',
-        timestamp: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(), // 5 hours ago
-      },
-      {
-        id: 3,
-        type: 'system_backup',
-        message: 'System backup completed',
-        timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
-      },
-      {
-        id: 4,
-        type: 'user_approved',
-        message: 'User approved: Jane Smith',
-        timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(), // 6 hours ago
-      },
-    ]
+        message: `New user registered: ${user.email || 'Unknown'}`,
+        timestamp: user.created_at,
+      })) || []),
+      // Recent invite creations
+      ...(recentInvites?.map((invite: any, index: number) => ({
+        id: `invite_${index}`,
+        type: 'invite_created',
+        message: `New invite created: ${invite.code}`,
+        timestamp: invite.created_at,
+      })) || []),
+    ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+     .slice(0, 5) // Keep only the 5 most recent activities
 
     // Calculate growth metrics
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)

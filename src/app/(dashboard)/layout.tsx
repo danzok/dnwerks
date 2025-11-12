@@ -6,8 +6,10 @@ export default function DashboardRoute({
   children: React.ReactNode;
 }) {
   return (
-    <DashboardLayout>
-      {children}
-    </DashboardLayout>
+    <div className="min-h-screen bg-[#FAFAFA] dark:bg-black">
+      <DashboardLayout>
+        {children}
+      </DashboardLayout>
+    </div>
   );
 }

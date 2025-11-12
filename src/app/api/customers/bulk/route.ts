@@ -1,22 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth-server'
-import { createClient } from '@supabase/supabase-js'
+import { createSupabaseAdminClient } from '@/lib/supabase/server-admin'
 import { processPhoneNumber } from '@/lib/utils/phone'
 
 // Load environment variables
 require('dotenv').config({ path: '.env.local' })
 
 // Create Supabase client
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  }
-)
+const supabase = createSupabaseAdminClient()
 
 // POST /api/customers/bulk - Bulk add customers
 export async function POST(request: NextRequest) {
@@ -65,7 +56,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const existingPhones = new Set(existingCustomers.map(c => c.phone))
+    const existingPhones = new Set(existingCustomers.map((c: any) => c.phone))
 
     let added = 0
     let skipped = 0

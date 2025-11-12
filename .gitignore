@@ -314,3 +314,5 @@ coverage/
 # Backup directory
 .env.backup/
 .vercel
+
+*storybook.log

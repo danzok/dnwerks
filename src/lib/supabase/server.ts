@@ -42,7 +42,7 @@ export async function createClient() {
             )
           } catch (error) {
             // Handle edge cases where cookie setting might fail
-            console.warn('Failed to set cookie:', name, error)
+            console.warn('Failed to set cookies:', error)
           }
         },
       },

@@ -17,7 +17,9 @@
     "context7:migrate": "echo 'Migrating to Context7 standards...' && npm run context7:validate",
     "context7:docs": "echo 'Accessing Context7 documentation...' && echo 'Use MCP server for real-time documentation'",
     "type-check": "tsc --noEmit",
-    "prepare": "echo 'Skipping validation for deployment'"
+    "prepare": "echo 'Skipping validation for deployment'",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -60,6 +62,7 @@
     "react-dom": "^19.2.0",
     "react-hook-form": "^7.66.0",
     "recharts": "^2.15.4",
+    "resend": "^6.4.2",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.3.1",
     "twilio": "^5.10.4",
@@ -67,18 +70,31 @@
     "zod": "^4.1.12"
   },
   "devDependencies": {
+    "@chromatic-com/storybook": "^4.1.2",
     "@shadcn/ui": "^0.0.4",
+    "@storybook/addon-a11y": "^10.0.6",
+    "@storybook/addon-docs": "^10.0.6",
+    "@storybook/addon-onboarding": "^10.0.6",
+    "@storybook/addon-vitest": "^10.0.6",
+    "@storybook/nextjs-vite": "^10.0.6",
     "@types/node": "^24.10.0",
     "@types/papaparse": "^5.3.14",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
+    "@vitest/browser-playwright": "^4.0.8",
+    "@vitest/coverage-v8": "^4.0.8",
     "autoprefixer": "^10.4.21",
     "eslint": "^9.39.1",
     "eslint-config-next": "^16.0.1",
+    "eslint-plugin-storybook": "^10.0.6",
+    "playwright": "^1.56.1",
     "postcss": "^8.5.6",
+    "storybook": "^10.0.6",
+    "supabase": "^2.54.11",
     "tailwindcss": "^3.4.18",
     "tailwindcss-animate": "^1.0.7",
     "tsx": "^4.19.2",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.8"
   }
 }

@@ -1,4 +1,6 @@
-import { Suspense } from "react";
+"use client";
+
+import { Suspense, useEffect, useState } from "react";
 import { ClientSafeSidebar } from "@/components/client-safe-sidebar"
 import { SiteHeader } from "@/components/site-header"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
@@ -7,7 +9,88 @@ import { Button } from "@/components/ui/button"
 import { CompactStats } from "@/components/ui/compact-stats"
 import { MessageSquare, Users, Calendar, Settings, Plus, Send, Archive, TrendingUp } from "lucide-react"
 
+interface DashboardStats {
+  totalCampaigns: number;
+  messagesSent: number;
+  activeContacts: number;
+  deliveryRate: number;
+  recentCampaigns: any[];
+  scheduledCampaigns: any[];
+}
+
 export default function DashboardPage() {
+  const [stats, setStats] = useState<DashboardStats>({
+    totalCampaigns: 0,
+    messagesSent: 0,
+    activeContacts: 0,
+    deliveryRate: 0,
+    recentCampaigns: [],
+    scheduledCampaigns: []
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    try {
+      // Fetch campaigns data
+      const campaignsResponse = await fetch('/api/campaigns');
+      const campaignsData = await campaignsResponse.json();
+      
+      // Fetch customers data
+      const customersResponse = await fetch('/api/customers');
+      const customersData = await customersResponse.json();
+
+      // Calculate stats from real data
+      const totalCampaigns = campaignsData.data?.length || 0;
+      const activeContacts = customersData?.length || 0;
+      
+      // Calculate messages sent (sum of all campaign recipients)
+      const messagesSent = campaignsData.data?.reduce((total: number, campaign: any) =>
+        total + (campaign.total_recipients || 0), 0) || 0;
+
+      // Calculate delivery rate (mock for now, would come from actual delivery data)
+      const deliveryRate = messagesSent > 0 ? 98.5 : 0;
+
+      // Filter recent and scheduled campaigns
+      const recentCampaigns = campaignsData.data?.slice(0, 3) || [];
+      const scheduledCampaigns = campaignsData.data?.filter((c: any) => c.status === 'scheduled').slice(0, 3) || [];
+
+      setStats({
+        totalCampaigns,
+        messagesSent,
+        activeContacts,
+        deliveryRate,
+        recentCampaigns,
+        scheduledCampaigns
+      });
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatNumber = (num: number) => {
+    if (num >= 1000) {
+      return `${(num / 1000).toFixed(1)}K`;
+    }
+    return num.toString();
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - date.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return `${diffDays} days ago`;
+    return date.toLocaleDateString();
+  };
   return (
     <SidebarProvider>
       <ClientSafeSidebar variant="inset" />
@@ -28,30 +111,30 @@ export default function DashboardPage() {
                 stats={[
                   {
                     title: "Total Campaigns",
-                    value: "24",
+                    value: stats.totalCampaigns.toString(),
                     icon: "MessageSquare",
                     color: "text-blue-600",
                     bgColor: "bg-blue-100"
                   },
                   {
-                    title: "Messages Sent", 
-                    value: "45.2K",
+                    title: "Messages Sent",
+                    value: formatNumber(stats.messagesSent),
                     icon: "Send",
                     color: "text-green-600",
                     bgColor: "bg-green-100"
                   },
                   {
                     title: "Active Contacts",
-                    value: "12.8K", 
+                    value: formatNumber(stats.activeContacts),
                     icon: "Users",
                     color: "text-purple-600",
                     bgColor: "bg-purple-100"
                   },
                   {
                     title: "Delivery Rate",
-                    value: "98.5%",
+                    value: `${stats.deliveryRate}%`,
                     icon: "TrendingUp",
-                    color: "text-orange-600", 
+                    color: "text-orange-600",
                     bgColor: "bg-orange-100"
                   }
                 ]}
@@ -66,7 +149,7 @@ export default function DashboardPage() {
                     <div className="p-1.5 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
                       <Plus className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                     </div>
-                    <Button size="sm" className="h-7 px-3 text-xs">
+                    <Button size="sm" className="h-7 px-3 text-xs" onClick={() => window.location.href = '/campaigns/create'}>
                       Create
                     </Button>
                   </div>
@@ -85,7 +168,7 @@ export default function DashboardPage() {
                     <div className="p-1.5 bg-green-100 dark:bg-green-900/20 rounded-lg">
                       <Send className="h-4 w-4 text-green-600 dark:text-green-400" />
                     </div>
-                    <Button size="sm" variant="outline" className="h-7 px-3 text-xs">
+                    <Button size="sm" variant="outline" className="h-7 px-3 text-xs" onClick={() => window.location.href = '/campaigns/create'}>
                       Send
                     </Button>
                   </div>
@@ -104,7 +187,7 @@ export default function DashboardPage() {
                     <div className="p-1.5 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
                       <Users className="h-4 w-4 text-purple-600 dark:text-purple-400" />
                     </div>
-                    <Button size="sm" variant="outline" className="h-7 px-3 text-xs">
+                    <Button size="sm" variant="outline" className="h-7 px-3 text-xs" onClick={() => window.location.href = '/contacts'}>
                       Manage
                     </Button>
                   </div>
@@ -132,36 +215,31 @@ export default function DashboardPage() {
                 </CardHeader>
                 <CardContent className="pt-0">
                   <div className="space-y-4">
-                    <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                      <div>
-                        <p className="font-medium text-foreground">Welcome Message</p>
-                        <p className="text-sm text-muted-foreground">Sent 2 hours ago</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm font-medium text-green-600 dark:text-green-400">Delivered</p>
-                        <p className="text-xs text-muted-foreground">245 recipients</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                      <div>
-                        <p className="font-medium text-foreground">Product Update</p>
-                        <p className="text-sm text-muted-foreground">Sent yesterday</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm font-medium text-blue-600 dark:text-blue-400">Scheduled</p>
-                        <p className="text-xs text-muted-foreground">1,200 recipients</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                      <div>
-                        <p className="font-medium text-foreground">Newsletter</p>
-                        <p className="text-sm text-muted-foreground">Sent 3 days ago</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm font-medium text-green-600 dark:text-green-400">Completed</p>
-                        <p className="text-xs text-muted-foreground">3,450 recipients</p>
-                      </div>
-                    </div>
+                    {loading ? (
+                      <div className="text-center py-4 text-muted-foreground">Loading campaigns...</div>
+                    ) : stats.recentCampaigns.length > 0 ? (
+                      stats.recentCampaigns.map((campaign: any, index: number) => (
+                        <div key={index} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                          <div>
+                            <p className="font-medium text-foreground">{campaign.name}</p>
+                            <p className="text-sm text-muted-foreground">{formatDate(campaign.created_at)}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className={`text-sm font-medium ${
+                              campaign.status === 'completed' ? 'text-green-600 dark:text-green-400' :
+                              campaign.status === 'scheduled' ? 'text-blue-600 dark:text-blue-400' :
+                              campaign.status === 'active' ? 'text-orange-600 dark:text-orange-400' :
+                              'text-gray-600 dark:text-gray-400'
+                            }`}>
+                              {campaign.status?.charAt(0).toUpperCase() + campaign.status?.slice(1) || 'Unknown'}
+                            </p>
+                            <p className="text-xs text-muted-foreground">{campaign.total_recipients || 0} recipients</p>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-4 text-muted-foreground">No campaigns found</div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -178,36 +256,26 @@ export default function DashboardPage() {
                 </CardHeader>
                 <CardContent className="pt-0">
                   <div className="space-y-4">
-                    <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                      <div>
-                        <p className="font-medium text-foreground">Holiday Promotion</p>
-                        <p className="text-sm text-muted-foreground">Tomorrow, 10:00 AM</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm font-medium text-blue-600 dark:text-blue-400">Pending</p>
-                        <p className="text-xs text-muted-foreground">850 recipients</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                      <div>
-                        <p className="font-medium text-foreground">Weekly Reminder</p>
-                        <p className="text-sm text-muted-foreground">Friday, 2:00 PM</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm font-medium text-blue-600 dark:text-blue-400">Pending</p>
-                        <p className="text-xs text-muted-foreground">520 recipients</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                      <div>
-                        <p className="font-medium text-foreground">Product Launch</p>
-                        <p className="text-sm text-muted-foreground">Next Monday</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm font-medium text-blue-600 dark:text-blue-400">Pending</p>
-                        <p className="text-xs text-muted-foreground">2,100 recipients</p>
-                      </div>
-                    </div>
+                    {loading ? (
+                      <div className="text-center py-4 text-muted-foreground">Loading scheduled campaigns...</div>
+                    ) : stats.scheduledCampaigns.length > 0 ? (
+                      stats.scheduledCampaigns.map((campaign: any, index: number) => (
+                        <div key={index} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                          <div>
+                            <p className="font-medium text-foreground">{campaign.name}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {campaign.scheduled_at ? new Date(campaign.scheduled_at).toLocaleString() : 'Scheduled'}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm font-medium text-blue-600 dark:text-blue-400">Scheduled</p>
+                            <p className="text-xs text-muted-foreground">{campaign.total_recipients || 0} recipients</p>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-4 text-muted-foreground">No scheduled campaigns</div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -220,7 +288,7 @@ export default function DashboardPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-muted-foreground">Total Campaigns</p>
-                      <p className="text-2xl font-bold text-foreground mt-1">24</p>
+                      <p className="text-2xl font-bold text-foreground mt-1">{stats.totalCampaigns}</p>
                     </div>
                     <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
                       <MessageSquare className="h-5 w-5 text-blue-600 dark:text-blue-400" />
@@ -234,7 +302,7 @@ export default function DashboardPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-muted-foreground">Messages Sent</p>
-                      <p className="text-2xl font-bold text-foreground mt-1">45.2K</p>
+                      <p className="text-2xl font-bold text-foreground mt-1">{formatNumber(stats.messagesSent)}</p>
                     </div>
                     <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
                       <Send className="h-5 w-5 text-green-600 dark:text-green-400" />
@@ -248,7 +316,7 @@ export default function DashboardPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-muted-foreground">Active Contacts</p>
-                      <p className="text-2xl font-bold text-foreground mt-1">12.8K</p>
+                      <p className="text-2xl font-bold text-foreground mt-1">{formatNumber(stats.activeContacts)}</p>
                     </div>
                     <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
                       <Users className="h-5 w-5 text-purple-600 dark:text-purple-400" />
@@ -262,7 +330,7 @@ export default function DashboardPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-muted-foreground">Delivery Rate</p>
-                      <p className="text-2xl font-bold text-foreground mt-1">98.5%</p>
+                      <p className="text-2xl font-bold text-foreground mt-1">{stats.deliveryRate}%</p>
                     </div>
                     <div className="p-2 bg-orange-100 dark:bg-orange-900/20 rounded-lg">
                       <TrendingUp className="h-5 w-5 text-orange-600 dark:text-orange-400" />
@@ -282,15 +350,15 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent className="pt-0">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <Button variant="outline" className="justify-start h-8 text-sm">
+                  <Button variant="outline" className="justify-start h-8 text-sm" onClick={() => window.location.href = '/campaigns/archived'}>
                     <Archive className="h-3 w-3 mr-2" />
                     View Archive
                   </Button>
-                  <Button variant="outline" className="justify-start h-8 text-sm">
+                  <Button variant="outline" className="justify-start h-8 text-sm" onClick={() => window.location.href = '/dashboard/customers/import'}>
                     <Users className="h-3 w-3 mr-2" />
                     Import Contacts
                   </Button>
-                  <Button variant="outline" className="justify-start h-8 text-sm">
+                  <Button variant="outline" className="justify-start h-8 text-sm" onClick={() => window.location.href = '/settings'}>
                     <Settings className="h-3 w-3 mr-2" />
                     Settings
                   </Button>

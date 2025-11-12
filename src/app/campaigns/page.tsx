@@ -32,29 +32,29 @@ export default function CampaignsPage() {
                     title: "Total Campaigns",
                     value: "24",
                     icon: "MessageSquare",
-                    color: "text-blue-600",
-                    bgColor: "bg-blue-100"
+                    color: "text-blue-600 dark:text-blue-400",
+                    bgColor: "bg-blue-100 dark:bg-blue-900/20"
                   },
                   {
                     title: "Messages Sent", 
                     value: "45.2K",
                     icon: "Send",
-                    color: "text-green-600",
-                    bgColor: "bg-green-100"
+                    color: "text-green-600 dark:text-green-400",
+                    bgColor: "bg-green-100 dark:bg-green-900/20"
                   },
                   {
                     title: "Active Recipients",
                     value: "12.8K", 
                     icon: "Users",
-                    color: "text-purple-600",
-                    bgColor: "bg-purple-100"
+                    color: "text-purple-600 dark:text-purple-400",
+                    bgColor: "bg-purple-100 dark:bg-purple-900/20"
                   },
                   {
                     title: "Delivery Rate",
                     value: "98.5%",
                     icon: "TrendingUp",
-                    color: "text-orange-600", 
-                    bgColor: "bg-orange-100"
+                    color: "text-orange-600 dark:text-orange-400",
+                    bgColor: "bg-orange-100 dark:bg-orange-900/20"
                   }
                 ]}
               />
@@ -65,8 +65,8 @@ export default function CampaignsPage() {
               <Card className="border bg-card shadow-sm hover:shadow-md transition-shadow">
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between">
-                    <div className="p-1.5 bg-blue-100 rounded-lg">
-                      <Plus className="h-4 w-4 text-blue-600" />
+                    <div className="p-1.5 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
+                      <Plus className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                     </div>
                     <Button size="sm" className="h-7 px-3 text-xs">
                       Create
@@ -84,8 +84,8 @@ export default function CampaignsPage() {
               <Card className="border bg-card shadow-sm hover:shadow-md transition-shadow">
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between">
-                    <div className="p-1.5 bg-green-100 rounded-lg">
-                      <Calendar className="h-4 w-4 text-green-600" />
+                    <div className="p-1.5 bg-green-100 dark:bg-green-900/20 rounded-lg">
+                      <Calendar className="h-4 w-4 text-green-600 dark:text-green-400" />
                     </div>
                     <Button size="sm" variant="outline" className="h-7 px-3 text-xs">
                       Schedule
@@ -103,8 +103,8 @@ export default function CampaignsPage() {
               <Card className="border bg-card shadow-sm hover:shadow-md transition-shadow">
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between">
-                    <div className="p-1.5 bg-purple-100 rounded-lg">
-                      <TrendingUp className="h-4 w-4 text-purple-600" />
+                    <div className="p-1.5 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
+                      <TrendingUp className="h-4 w-4 text-purple-600 dark:text-purple-400" />
                     </div>
                     <Button size="sm" variant="outline" className="h-7 px-3 text-xs">
                       Reports

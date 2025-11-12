@@ -2,7 +2,7 @@
  * Supabase authentication utilities - SERVER SIDE
  */
 
-import { createClient } from '@supabase/supabase-js'
+import { createSupabaseAdminClient } from '@/lib/supabase/server-admin'
 import { headers, cookies } from 'next/headers'
 import { NextRequest } from 'next/server'
 
@@ -90,16 +90,7 @@ export async function auth(request?: NextRequest) {
     }
 
     // Create Supabase client with service role key for server-side
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false
-        }
-      }
-    )
+    const supabaseAdmin = createSupabaseAdminClient()
 
     // Verify the JWT token
     const { data: { user }, error } = await supabaseAdmin.auth.getUser(token)

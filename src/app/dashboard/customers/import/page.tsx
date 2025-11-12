@@ -12,18 +12,19 @@ import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { 
-  Upload, 
-  FileText, 
-  ArrowLeft, 
-  CheckCircle2, 
-  AlertCircle, 
-  Info, 
-  UserPlus, 
+import {
+  Upload,
+  FileText,
+  ArrowLeft,
+  CheckCircle2,
+  AlertCircle,
+  Info,
+  UserPlus,
   Eye,
   X,
   Plus,
-  Loader2
+  Loader2,
+  Download
 } from "lucide-react"
 import Link from "next/link"
 import { toast } from "sonner"
@@ -320,6 +321,43 @@ export default function ImportContactsPage() {
     }
   }
 
+  const handleDownloadTemplate = async () => {
+    try {
+      const response = await fetch('/api/customers/template')
+      
+      if (!response.ok) {
+        throw new Error('Failed to download template')
+      }
+
+      // Get the filename from the response headers or use a default
+      const contentDisposition = response.headers.get('content-disposition')
+      let filename = 'customer-import-template.csv'
+      
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/)
+        if (filenameMatch) {
+          filename = filenameMatch[1]
+        }
+      }
+
+      // Create blob and download
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+      
+      toast.success('Template downloaded successfully')
+    } catch (error) {
+      console.error('Download error:', error)
+      toast.error('Failed to download template')
+    }
+  }
+
   const validPreviewCount = previewCustomers.filter(c => c.isValid).length
   const invalidPreviewCount = previewCustomers.filter(c => !c.isValid).length
 
@@ -333,7 +371,7 @@ export default function ImportContactsPage() {
             {/* Header */}
             <div className="flex items-center gap-4">
               <Button asChild variant="ghost" size="icon">
-                <Link href="/dashboard/customers">
+                <Link href="/contacts">
                   <ArrowLeft className="h-4 w-4" />
                 </Link>
               </Button>
@@ -463,7 +501,18 @@ export default function ImportContactsPage() {
                       </div>
 
                       <div className="p-4 bg-muted rounded-lg border">
-                        <p className="text-sm font-medium mb-2">Example CSV format:</p>
+                        <div className="flex items-center justify-between mb-3">
+                          <p className="text-sm font-medium">Example CSV format:</p>
+                          <Button
+                            onClick={handleDownloadTemplate}
+                            variant="outline"
+                            size="sm"
+                            className="h-8 text-xs"
+                          >
+                            <Download className="h-3 w-3 mr-1" />
+                            Download Template
+                          </Button>
+                        </div>
                         <code className="text-xs text-muted-foreground block leading-relaxed font-mono">
                           Phone,FirstName,LastName,Email<br/>
                           5551234567,John,Doe,john@example.com<br/>

@@ -1,22 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth-server'
-import { createClient } from '@supabase/supabase-js'
+import { createSupabaseAdminClient } from '@/lib/supabase/server-admin'
 import { processPhoneNumber } from '@/lib/utils/phone'
 
 // Load environment variables
 require('dotenv').config({ path: '.env.local' })
 
 // Create Supabase client
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  }
-)
+const supabase = createSupabaseAdminClient()
 
 // GET /api/customers - List all customers for the authenticated user
 export async function GET(request: NextRequest) {

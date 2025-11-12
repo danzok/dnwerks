@@ -29,6 +29,13 @@ export default function CreateCampaignPage() {
   const [scheduledTime, setScheduledTime] = useState("");
   const [messageContent, setMessageContent] = useState("");
   const [campaignName, setCampaignName] = useState("");
+  const [showTemplateDialog, setShowTemplateDialog] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState<{name: string, content: string} | null>(null);
+  const [customTemplates, setCustomTemplates] = useState<{name: string, content: string}[]>([
+    { name: "Sale", content: "Hi {firstName}! 🎉 Special offer just for you - get 25% off your next purchase with code SAVE25. Shop now: {link} Reply STOP to opt out." },
+    { name: "Reminder", content: "Hi {firstName}, don't forget about your appointment tomorrow at 2 PM. Need to reschedule? Call us or visit {link} Reply STOP to opt out." },
+    { name: "Welcome", content: "Welcome {firstName}! 👋 Thanks for joining us. Here's your 15% welcome discount: code WELCOME15. Start shopping: {link} Reply STOP to opt out." }
+  ]);
   
   // Get contacts data
   const { contacts, stats, loading } = useContactsRealtime("", selectedState);
@@ -128,20 +135,57 @@ export default function CreateCampaignPage() {
     }
   };
 
-  const insertTemplate = (type: 'sale' | 'reminder' | 'welcome') => {
-    const templates = {
-      sale: "Hi {firstName}! 🎉 Special offer just for you - get 25% off your next purchase with code SAVE25. Shop now: {link} Reply STOP to opt out.",
-      reminder: "Hi {firstName}, don't forget about your appointment tomorrow at 2 PM. Need to reschedule? Call us or visit {link} Reply STOP to opt out.",
-      welcome: "Welcome {firstName}! 👋 Thanks for joining us. Here's your 15% welcome discount: code WELCOME15. Start shopping: {link} Reply STOP to opt out."
-    };
-    
-    const template = templates[type];
-    setMessageContent(template);
+  // Simplified template insertion - removed complex template management
+  const insertTemplate = (template: {name: string, content: string}) => {
+    setMessageContent(template.content);
     const textarea = document.getElementById('message-content') as HTMLTextAreaElement;
     if (textarea) {
-      textarea.value = template;
+      textarea.value = template.content;
       textarea.focus();
     }
+  };
+
+  // Template management functions
+  const addNewTemplate = () => {
+    setEditingTemplate({ name: '', content: '' });
+    setShowTemplateDialog(true);
+  };
+
+  const startEditTemplate = (template: {name: string, content: string}) => {
+    setEditingTemplate(template);
+    setMessageContent(template.content);
+    setShowTemplateDialog(true);
+  };
+
+  const saveTemplate = () => {
+    if (!editingTemplate || !editingTemplate.name.trim() || !messageContent.trim()) return;
+    
+    const newTemplate = {
+      name: editingTemplate.name.trim(),
+      content: messageContent.trim()
+    };
+    
+    // Check if template with this name already exists
+    const existingIndex = customTemplates.findIndex(t => t.name === newTemplate.name);
+    
+    if (existingIndex >= 0) {
+      // Update existing template
+      const updatedTemplates = [...customTemplates];
+      updatedTemplates[existingIndex] = newTemplate;
+      setCustomTemplates(updatedTemplates);
+    } else {
+      // Add new template
+      setCustomTemplates([...customTemplates, newTemplate]);
+    }
+    
+    // Reset and close dialog
+    setEditingTemplate(null);
+    setShowTemplateDialog(false);
+    setMessageContent('');
+  };
+
+  const deleteTemplate = (templateName: string) => {
+    setCustomTemplates(customTemplates.filter(t => t.name !== templateName));
   };
 
   const generateShortLink = async () => {
@@ -176,7 +220,7 @@ export default function CreateCampaignPage() {
                     <ArrowLeft className="h-4 w-4" />
                   </Link>
                 </Button>
-                <div className="p-1.5 bg-blue-100 rounded-lg">
+                <div className="p-1.5 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
                   <Plus className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                 </div>
                 <div>
@@ -187,33 +231,14 @@ export default function CreateCampaignPage() {
             </div>
 
             {/* Quick Actions */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-              <Card className="border bg-card shadow-sm hover:shadow-md transition-shadow">
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between">
-                    <div className="p-1.5 bg-purple-100 rounded-lg">
-                      <Target className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-                    </div>
-                    <Button size="sm" variant="outline" className="h-7 px-3 text-xs">
-                      Browse
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <CardTitle className="text-base mb-1">Templates</CardTitle>
-                  <CardDescription className="text-xs">
-                    Use pre-designed campaign templates
-                  </CardDescription>
-                </CardContent>
-              </Card>
-
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
               <Card className="border bg-card shadow-sm hover:shadow-md transition-shadow">
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between">
                     <div className="p-1.5 bg-green-100 dark:bg-green-900/20 rounded-lg">
                       <Users className="h-4 w-4 text-green-600 dark:text-green-400" />
                     </div>
-                    <Button size="sm" variant="outline" className="h-7 px-3 text-xs">
+                    <Button size="sm" variant="outline" className="h-7 px-3 text-xs" onClick={() => window.location.href = '/contacts'}>
                       Manage
                     </Button>
                   </div>
@@ -232,7 +257,7 @@ export default function CreateCampaignPage() {
                     <div className="p-1.5 bg-orange-100 dark:bg-orange-900/20 rounded-lg">
                       <Calendar className="h-4 w-4 text-orange-600 dark:text-orange-400" />
                     </div>
-                    <Button size="sm" variant="outline" className="h-7 px-3 text-xs">
+                    <Button size="sm" variant="outline" className="h-7 px-3 text-xs" onClick={() => window.location.href = '/campaigns/create'}>
                       Schedule
                     </Button>
                   </div>
@@ -403,32 +428,53 @@ export default function CreateCampaignPage() {
                               <span className="text-xs font-medium text-foreground">Quick Templates:</span>
                             </div>
                             <div className="flex flex-wrap gap-2">
+                              {/* Simplified template buttons - removed complex template management */}
+                              <div className="flex flex-wrap gap-2">
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => insertVariable('{firstName}')}
+                                  className="h-7 px-2 text-xs"
+                                >
+                                  👤 First Name
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => insertVariable('{lastName}')}
+                                  className="h-7 px-2 text-xs"
+                                >
+                                  👥 Last Name
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setShowLinkDialog(true)}
+                                  className="h-7 px-2 text-xs"
+                                >
+                                  🔗 Add Link
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => insertVariable('Reply STOP to opt out')}
+                                  className="h-7 px-2 text-xs"
+                                >
+                                  ✋ Opt-out
+                                </Button>
+                              </div>
                               <Button
                                 type="button"
-                                variant="ghost"
+                                variant="outline"
                                 size="sm"
-                                onClick={() => insertTemplate('sale')}
+                                onClick={addNewTemplate}
                                 className="h-6 px-2 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/20"
                               >
-                                💰 Sale
-                              </Button>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => insertTemplate('reminder')}
-                                className="h-6 px-2 text-xs text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 hover:bg-green-50 dark:hover:bg-green-950/20"
-                              >
-                                ⏰ Reminder
-                              </Button>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => insertTemplate('welcome')}
-                                className="h-6 px-2 text-xs text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/20"
-                              >
-                                👋 Welcome
+                                ➕ Add New
                               </Button>
                             </div>
                           </div>
@@ -545,7 +591,7 @@ export default function CreateCampaignPage() {
                                 <SelectTrigger className="h-8 text-xs">
                                   <SelectValue placeholder="Choose state" />
                                 </SelectTrigger>
-                                <SelectContent>
+                                <SelectContent className="bg-white dark:bg-background border-gray-200 dark:border-border">
                                   <SelectItem value="all">All States</SelectItem>
                                   {/* Get unique states from contacts */}
                                   {getUniqueSortedStrings(contacts.map(c => c.state)).map(state => (
@@ -680,13 +726,13 @@ export default function CreateCampaignPage() {
                       </div>
                       
                       {selectedRecipients === "single" && (
-                        <div className="mt-2 p-2 bg-amber-50 rounded text-xs text-amber-700">
+                        <div className="mt-2 p-2 bg-amber-50 dark:bg-amber-950/20 rounded text-xs text-amber-700 dark:text-amber-400">
                           💡 Tip: Single number sends are perfect for testing messages or individual communications
                         </div>
                       )}
                       
                       {isOverLimit && (
-                        <div className="mt-2 p-2 bg-red-50 rounded text-xs text-red-700">
+                        <div className="mt-2 p-2 bg-red-50 dark:bg-red-950/20 rounded text-xs text-red-700 dark:text-red-400">
                           ⚠️ Cannot send: Message exceeds maximum length limit
                         </div>
                       )}
@@ -826,9 +872,9 @@ export default function CreateCampaignPage() {
                         <span>Overall Progress</span>
                         <span>{Math.round(getProgressPercentage())}%</span>
                       </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                         <div 
-                          className="bg-blue-600 h-2 rounded-full transition-all duration-300 ease-in-out"
+                          className="bg-blue-600 dark:bg-blue-400 h-2 rounded-full transition-all duration-300 ease-in-out"
                           style={{ width: `${getProgressPercentage()}%` }}
                         ></div>
                       </div>
@@ -898,10 +944,112 @@ export default function CreateCampaignPage() {
                 </div>
               </DialogContent>
             </Dialog>
-
+  
+            {/* Template Management Dialog */}
+            <Dialog open={showTemplateDialog} onOpenChange={setShowTemplateDialog}>
+              <DialogContent className="sm:max-w-lg">
+                <DialogHeader>
+                  <DialogTitle className="text-base">
+                    {editingTemplate?.name ? 'Edit Template' : 'Manage Templates'}
+                  </DialogTitle>
+                  <DialogDescription className="text-sm">
+                    {editingTemplate?.name ? 'Edit your message template' : 'Create and manage your message templates'}
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  {editingTemplate ? (
+                    <div>
+                      <div>
+                        <Label htmlFor="template-name" className="text-xs font-medium">Template Name</Label>
+                        <Input
+                          id="template-name"
+                          type="text"
+                          placeholder="e.g., Special Sale"
+                          value={editingTemplate.name}
+                          onChange={(e) => setEditingTemplate({...editingTemplate, name: e.target.value})}
+                          className="mt-1.5 h-9 text-sm"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="template-content" className="text-xs font-medium">Message Content</Label>
+                        <textarea
+                          id="template-content"
+                          placeholder="Hi {firstName}, get 25% off this weekend! Use code SAVE25. Visit {link} - Reply STOP to opt out."
+                          rows={4}
+                          value={messageContent}
+                          onChange={(e) => setMessageContent(e.target.value)}
+                          maxLength={500}
+                          className="w-full mt-1.5 px-3 py-2 text-sm border rounded-md focus:ring-2 focus:ring-ring focus:border-ring resize-none"
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="text-sm font-medium text-foreground mb-3">Your Templates</div>
+                      {customTemplates.length === 0 ? (
+                        <div className="text-center py-8 text-muted-foreground">
+                          <div className="text-4xl mb-2">📝</div>
+                          <p className="text-sm">No custom templates yet</p>
+                          <p className="text-xs text-muted-foreground mt-1">Create your first template to get started</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-2 max-h-60 overflow-y-auto">
+                          {customTemplates.map((template, index) => (
+                            <div key={index} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50">
+                              <div className="flex-1 min-w-0">
+                                <div className="font-medium text-sm">{template.name}</div>
+                                <div className="text-xs text-muted-foreground truncate">{template.content}</div>
+                              </div>
+                              <div className="flex gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => startEditTemplate(template)}
+                                  className="h-7 px-2 text-xs"
+                                >
+                                  Edit
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => deleteTemplate(template.name)}
+                                  className="h-7 px-2 text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
+                                >
+                                  Delete
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
+                  <div className="flex gap-2 pt-4 border-t">
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowTemplateDialog(false)}
+                      className="flex-1 h-9 text-sm"
+                    >
+                      {editingTemplate ? 'Cancel' : 'Close'}
+                    </Button>
+                    {editingTemplate && (
+                      <Button
+                        onClick={saveTemplate}
+                        disabled={!editingTemplate.name.trim() || !messageContent.trim()}
+                        className="flex-1 h-9 text-sm"
+                      >
+                        Save Template
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+  
+            </div>
           </div>
-        </div>
-      </SidebarInset>
-    </SidebarProvider>
-  )
-}
+        </SidebarInset>
+      </SidebarProvider>
+    )
+  }

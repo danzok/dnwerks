@@ -112,12 +112,23 @@ export function useAnalytics(days: number = 30): UseAnalyticsResult {
         cost,
       });
 
+      const deliveryRate = messages > 0 ? (delivered / messages) * 100 : 0;
+      const engagementRate = delivered > 0 ? (engagement / delivered) * 100 : 0;
+      
+      // DEBUG: Log potential NaN values
+      if (isNaN(deliveryRate)) {
+        console.error('[useAnalytics] NaN deliveryRate detected:', { delivered, messages, deliveryRate });
+      }
+      if (isNaN(engagementRate)) {
+        console.error('[useAnalytics] NaN engagementRate detected:', { engagement, delivered, engagementRate });
+      }
+
       deliverySeriesData.push({
         date: dateStr,
         delivered,
         failed,
         pending: Math.floor(Math.random() * 50),
-        deliveryRate: (delivered / messages) * 100,
+        deliveryRate,
       });
 
       engagementSeriesData.push({
@@ -125,7 +136,7 @@ export function useAnalytics(days: number = 30): UseAnalyticsResult {
         responses: engagement,
         clicks: Math.floor(engagement * (0.3 + Math.random() * 0.4)),
         unsubscribes: Math.floor(Math.random() * 5),
-        engagementRate: (engagement / delivered) * 100,
+        engagementRate,
       });
 
       costSeriesData.push({
@@ -144,12 +155,26 @@ export function useAnalytics(days: number = 30): UseAnalyticsResult {
     setEngagementData(engagementSeriesData);
     setCostData(costSeriesData);
 
+    const deliveryRate = totalMessages > 0 ? (totalDelivered / totalMessages) * 100 : 0;
+    const engagementRate = totalDelivered > 0 ? (totalEngaged / totalDelivered) * 100 : 0;
+    
+    // DEBUG: Log potential NaN values in metrics
+    if (isNaN(deliveryRate)) {
+      console.error('[useAnalytics] NaN deliveryRate in metrics:', { totalDelivered, totalMessages, deliveryRate });
+    }
+    if (isNaN(engagementRate)) {
+      console.error('[useAnalytics] NaN engagementRate in metrics:', { totalEngaged, totalDelivered, engagementRate });
+    }
+    if (isNaN(totalCost)) {
+      console.error('[useAnalytics] NaN totalCost detected:', { totalCost });
+    }
+
     setMetrics({
       totalMessages,
       deliveredMessages: totalDelivered,
       failedMessages: totalFailed,
-      deliveryRate: totalMessages > 0 ? (totalDelivered / totalMessages) * 100 : 0,
-      engagementRate: totalDelivered > 0 ? (totalEngaged / totalDelivered) * 100 : 0,
+      deliveryRate,
+      engagementRate,
       engagedCustomers: totalEngaged,
       totalCost,
       messageGrowth: previousPeriodGrowth,

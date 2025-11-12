@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createSupabaseAdminClient } from '@/lib/supabase/server-admin';
 import { transformDatabaseResponse, transformApiRequest } from './property-transform';
 import type {
   Campaign,
@@ -19,7 +19,7 @@ export * from './types';
 
 // Get Supabase client
 function getSupabaseClient() {
-  return createClient();
+  return createSupabaseAdminClient();
 }
 
 // Campaign functions

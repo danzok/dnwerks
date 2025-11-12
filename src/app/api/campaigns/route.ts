@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/client';
+import { auth } from '@/lib/auth-server';
+import { createSupabaseAdminClient } from '@/lib/supabase/server-admin';
 import { getCampaignsByUserId, createCampaign } from '@/lib/db';
 import { transformApiRequest, transformDatabaseResponse } from '@/lib/property-transform';
 import type { NewCampaignUI, CampaignUI } from '@/lib/ui-types';
@@ -7,10 +8,9 @@ import type { NewCampaignUI, CampaignUI } from '@/lib/ui-types';
 // GET /api/campaigns - List all campaigns for the authenticated user
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !user) {
+    const { userId } = await auth(request);
+    
+    if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
     const ascending = searchParams.get('ascending') === 'true' ? true : undefined;
 
     // Get campaigns for the user
-    const campaigns = await getCampaignsByUserId(user.id, {
+    const campaigns = await getCampaignsByUserId(userId, {
       status,
       search,
       dateFrom,
@@ -55,10 +55,9 @@ export async function GET(request: NextRequest) {
 // POST /api/campaigns - Create a new campaign
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !user) {
+    const { userId } = await auth(request);
+    
+    if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -75,7 +74,7 @@ export async function POST(request: NextRequest) {
 
     // Transform UI data to database format
     const campaignData: NewCampaignUI = {
-      userId: user.id,
+      userId: userId,
       name: body.name,
       messageBody: body.messageBody,
       status: body.status || 'draft',

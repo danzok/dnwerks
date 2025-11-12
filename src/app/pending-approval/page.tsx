@@ -19,7 +19,7 @@ export default function PendingApprovalPage() {
         const { data: { user } } = await supabase.auth.getUser()
 
         if (!user) {
-          window.location.href = '/sign-in'
+          window.location.href = '/login'
           return
         }
 
@@ -42,9 +42,9 @@ export default function PendingApprovalPage() {
           return
         }
 
-        // If rejected, redirect to sign-in with error
+        // If rejected, redirect to login with error
         if (profile.status === 'rejected') {
-          window.location.href = '/sign-in?error=access_denied'
+          window.location.href = '/login?error=access_denied'
           return
         }
 
@@ -66,7 +66,7 @@ export default function PendingApprovalPage() {
   const handleSignOut = async () => {
     const supabase = createClient()
     await supabase.auth.signOut()
-    window.location.href = '/sign-in'
+    window.location.href = '/login'
   }
 
   if (loading) {

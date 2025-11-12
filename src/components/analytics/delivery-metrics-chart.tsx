@@ -19,6 +19,21 @@ interface DeliveryMetricsChartProps {
 }
 
 export function DeliveryMetricsChart({ data }: DeliveryMetricsChartProps) {
+  // DEBUG: Log data being passed to chart
+  console.log('[DeliveryMetricsChart] Received data:', data);
+  console.log('[DeliveryMetricsChart] Data length:', data?.length);
+  
+  // DEBUG: Check for NaN values in data
+  if (data) {
+    data.forEach((point, index) => {
+      Object.entries(point).forEach(([key, value]) => {
+        if (typeof value === 'number' && isNaN(value)) {
+          console.error(`[DeliveryMetricsChart] NaN value found at index ${index}, key ${key}:`, value);
+        }
+      });
+    });
+  }
+  
   return (
     <div className="h-80">
       <ResponsiveContainer width="100%" height="100%">

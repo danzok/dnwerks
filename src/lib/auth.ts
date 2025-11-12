@@ -5,12 +5,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from '@/lib/supabase/client'
+import { Session } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export const supabase = createClient()
 
 // Client-side hook for components
 export function useUser() {
@@ -18,43 +16,42 @@ export function useUser() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    console.log('🔐 useUser: Starting auth check...')
-    
-    // For development, return a mock user
-    // In production, you would implement proper Supabase auth here
-    const mockUser = {
-      id: '7a361a20-86e3-41da-a7d1-1ba13d8b9f2c',
-      email: 'admin@dnwerks.com',
-      user_metadata: {
-        name: 'Admin User'
-      }
-    }
-    
-    console.log('🔐 useUser: Setting mock user for development')
-    setUser(mockUser)
+  console.log('🔐 useUser: Starting auth check...')
+  
+  // Get initial user with proper verification
+  supabase.auth.getUser().then(({ data: { user } }: { data: { user: any } }) => {
+    console.log('🔐 useUser: Initial user:', user)
+    setUser(user ?? null)
     setLoading(false)
+  }).catch((error: any) => {
+    console.error('🔐 useUser: Error getting initial user:', error)
+    setUser(null)
+    setLoading(false)
+  })
 
-    // Uncomment this for real Supabase auth:
-    /*
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('🔐 useUser: Initial session:', session)
-      setUser(session?.user ?? null)
-      setLoading(false)
-    })
+  // Listen for auth changes
+  const {
+    data: { subscription },
+  } = supabase.auth.onAuthStateChange(async (_event: string, session: Session | null) => {
+    console.log('🔐 useUser: Auth state changed:', session)
+    
+    // When auth state changes, verify the user with getUser() for security
+    if (session?.user) {
+      const { data: { user }, error } = await supabase.auth.getUser()
+      if (error) {
+        console.error('🔐 useUser: Error verifying user:', error)
+        setUser(null)
+      } else {
+        setUser(user)
+      }
+    } else {
+      setUser(null)
+    }
+    setLoading(false)
+  })
 
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      console.log('🔐 useUser: Auth state changed:', session)
-      setUser(session?.user ?? null)
-      setLoading(false)
-    })
-
-    return () => subscription.unsubscribe()
-    */
-  }, [])
+  return () => subscription.unsubscribe()
+}, [])
 
   return {
     user,

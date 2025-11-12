@@ -28,6 +28,9 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar";
+import { useUserProfile } from '@/hooks/use-user-profile'
+import { filterNavItemsByRole, type NavItem } from '@/lib/role-based-navigation'
+import { UserRole } from '@/lib/types'
 
 // DNwerks SMS Campaign Management Navigation - Simplified & Organized
 const data = {
@@ -44,25 +47,12 @@ const data = {
       icon: MessageSquare,
       items: [
         {
-          title: "All Campaigns",
-          url: "/campaigns",
-        },
-        {
           title: "Create Campaign",
           url: "/campaigns/create",
         },
         {
-          title: "Templates",
-          url: "/campaigns/templates",
-        },
-        {
-          title: "Scheduled",
-          url: "/campaigns?filter=scheduled",
-        },
-        {
-          title: "Reports",
-          url: "/dashboard/analytics",
-          icon: BarChart3,
+          title: "Archived Campaign",
+          url: "/campaigns/archived",
         },
       ],
     },
@@ -123,35 +113,7 @@ const data = {
       title: "Admin",
       url: "/admin",
       icon: Shield,
-      items: [
-        {
-          title: "Admin Panel",
-          url: "/admin",
-          icon: Shield,
-        },
-        {
-          title: "User Management",
-          url: "/admin/users",
-          icon: Users,
-        },
-        {
-          title: "System Settings",
-          url: "/admin/settings",
-          icon: Settings,
-        },
-      ],
-    },
-    {
-      title: "Help & Support",
-      url: "#",
-      icon: HelpCircle,
-      items: [
-        {
-          title: "Docs",
-          url: "/docs",
-          icon: FileText,
-        },
-      ],
+      requiresRole: 'admin' as UserRole,
     },
   ],
   navSecondary: [
@@ -161,7 +123,7 @@ const data = {
       icon: FileText,
     },
     {
-      title: "API Reference", 
+      title: "API Reference",
       url: "/api",
       icon: Database,
     },
@@ -169,6 +131,12 @@ const data = {
 };
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const { profile } = useUserProfile()
+  const userRole = profile?.role || 'user'
+  
+  // Filter navigation items based on user role
+  const filteredNavMain = filterNavItemsByRole(data.navMain, userRole)
+  
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
@@ -185,7 +153,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={data.navMain} />
+        <NavMain items={filteredNavMain} />
         <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>
