@@ -35,31 +35,22 @@ interface UseContactsRealtimeResult {
   contacts: Contact[];
   stats: ContactStats;
   filteredContacts: Contact[];
-  paginatedContacts: Contact[];
   loading: boolean;
   error: string | null;
   lastUpdated: Date | null;
-  currentPage: number;
-  totalPages: number;
-  itemsPerPage: number;
   refreshContacts: () => Promise<void>;
   deleteContact: (id: string) => Promise<void>;
-  setCurrentPage: (page: number) => void;
-  goToNextPage: () => void;
-  goToPrevPage: () => void;
 }
 
 export function useContactsRealtime(
   searchQuery: string = "",
-  selectedState: string = "all",
-  itemsPerPage: number = 5
+  selectedState: string = "all"
 ): UseContactsRealtimeResult {
   const { user } = useUser();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
 
   // Transform database format to Contact format
   const transformContact = useCallback((customer: any): Contact => ({
@@ -154,26 +145,6 @@ export function useContactsRealtime(
     return matchesSearch && matchesState;
   });
 
-  // Calculate pagination
-  const totalPages = Math.ceil(filteredContacts.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const paginatedContacts = filteredContacts.slice(startIndex, endIndex);
-
-  // Reset page when filters change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchQuery, selectedState]);
-
-  // Pagination functions
-  const goToNextPage = useCallback(() => {
-    setCurrentPage(prev => Math.min(prev + 1, totalPages));
-  }, [totalPages]);
-
-  const goToPrevPage = useCallback(() => {
-    setCurrentPage(prev => Math.max(prev - 1, 1));
-  }, []);
-
   // Initial fetch
   useEffect(() => {
     fetchContacts();
@@ -214,17 +185,10 @@ export function useContactsRealtime(
     contacts,
     stats,
     filteredContacts,
-    paginatedContacts,
     loading,
     error,
     lastUpdated,
-    currentPage,
-    totalPages,
-    itemsPerPage,
     refreshContacts: fetchContacts,
-    deleteContact,
-    setCurrentPage,
-    goToNextPage,
-    goToPrevPage
+    deleteContact
   };
 }

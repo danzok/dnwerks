@@ -12,10 +12,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { VercelDataTable, createContactColumns } from "@/components/contacts/vercel-data-table";
 import { ContactsStats } from "@/components/contacts/contacts-stats";
 import { RealtimeBar } from "@/components/contacts/realtime-bar";
-import { Pagination } from "@/components/contacts/pagination";
 import { ContactsByStateChart } from "@/components/contacts/contacts-by-state-chart";
 import { useContactsRealtime } from "@/hooks/use-contacts-realtime";
-import { Plus, Upload, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Upload, Search } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -103,24 +102,17 @@ export default function ContactsPage() {
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   
-  // Use the realtime contacts hook with pagination (5 contacts per page)
+  // Use the realtime contacts hook without pagination
   const {
     contacts,
     stats,
     filteredContacts,
-    paginatedContacts,
     loading,
     error,
     lastUpdated,
-    currentPage,
-    totalPages,
-    itemsPerPage,
     refreshContacts,
-    deleteContact,
-    setCurrentPage,
-    goToNextPage,
-    goToPrevPage
-  } = useContactsRealtime(searchQuery, selectedState, 5);
+    deleteContact
+  } = useContactsRealtime(searchQuery, selectedState);
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
@@ -340,7 +332,7 @@ export default function ContactsPage() {
                 <div className="overflow-x-auto">
                   <VercelDataTable
                     columns={createContactColumns(deleteContact || undefined)}
-                    data={paginatedContacts}
+                    data={filteredContacts}
                     loading={loading}
                     error={error || undefined}
                     onDeleteContact={deleteContact}
@@ -348,45 +340,6 @@ export default function ContactsPage() {
                 </div>
               </div>
               
-              {/* Pagination */}
-              {filteredContacts.length > 0 && (
-                <div className="flex items-center justify-between px-4 py-3 bg-[#FAFAFA] dark:bg-[#0A0A0A] border-t border-[#EAEAEA] dark:border-[#333333]">
-                  <div className="flex items-center text-xs text-[#666666] dark:text-[#999999]">
-                    <span>Showing 1 to {Math.min(5, contacts.length)} of {filteredContacts.length} results</span>
-                  </div>
-                  <div className="flex items-center space-x-1">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => goToPrevPage()}
-                      disabled={currentPage === 1}
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <div className="flex items-center space-x-0.5">
-                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
-                        <Button
-                          key={pageNum}
-                          variant={currentPage === pageNum ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => setCurrentPage(pageNum)}
-                          className="h-7 w-7 p-0 text-xs"
-                        >
-                          {pageNum}
-                        </Button>
-                      ))}
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => goToNextPage()}
-                      disabled={currentPage === totalPages}
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              )}
             </div>
 
             {/* Quick Stats Summary */}
