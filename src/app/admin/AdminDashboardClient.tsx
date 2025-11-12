@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -68,12 +69,14 @@ interface SystemSettings {
 
 export default function AdminDashboardClient() {
   const supabase = createClient();
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState("overview");
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [settings, setSettings] = useState<SystemSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [authChecked, setAuthChecked] = useState(false);
 
   // Fetch initial data
   const fetchInitialData = async () => {
@@ -84,9 +87,31 @@ export default function AdminDashboardClient() {
       // Get current session
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        setError('Not authenticated');
+        console.log('🔐 No session found, redirecting to login');
+        router.push('/login');
         return;
       }
+
+      // Check if user is admin by fetching their profile
+      const { data: profile, error: profileError } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('user_id', session.user.id)
+        .single();
+
+      if (profileError || !profile) {
+        console.error('❌ Profile fetch error:', profileError);
+        setError('User profile not found');
+        return;
+      }
+
+      if (profile.role !== 'admin') {
+        console.log('🚫 User is not admin, redirecting to dashboard');
+        router.push('/dashboard');
+        return;
+      }
+
+      setAuthChecked(true);
 
       // Fetch users
       const usersResponse = await fetch('/api/admin/users', {
@@ -177,7 +202,7 @@ export default function AdminDashboardClient() {
     fetchInitialData();
   }, []);
 
-  if (loading) {
+  if (loading || !authChecked) {
     return (
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-8">
@@ -185,8 +210,8 @@ export default function AdminDashboardClient() {
             <Card className="w-full max-w-md">
               <CardContent className="p-6 text-center">
                 <Shield className="h-12 w-12 text-muted-foreground mx-auto mb-4 animate-pulse" />
-                <h2 className="text-2xl font-semibold mb-2">Loading Admin Dashboard</h2>
-                <p className="text-muted-foreground">Please wait while we load your admin panel...</p>
+                <h2 className="text-2xl font-semibold mb-2">Verifying Admin Access</h2>
+                <p className="text-muted-foreground">Please wait while we verify your permissions...</p>
               </CardContent>
             </Card>
           </div>
