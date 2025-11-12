@@ -164,8 +164,8 @@ export const createContactColumns = (onDeleteContact?: (id: string) => void): Co
     cell: ({ row }) => {
       const firstName = row.getValue("firstName") as string
       const lastName = row.original.lastName as string
-      const email = row.getValue("email") as string
-      const phone = row.getValue("phone") as string
+      const email = row.original.email as string
+      const phone = row.original.phone as string
       
       return (
         <div className="space-y-1">
@@ -188,6 +188,30 @@ export const createContactColumns = (onDeleteContact?: (id: string) => void): Co
               )}
             </div>
           )}
+        </div>
+      )
+    },
+  },
+  {
+    accessorKey: "email",
+    header: "Email",
+    cell: ({ row }) => {
+      const email = row.getValue("email") as string
+      return (
+        <div className="text-sm text-[#666666] dark:text-[#888888]">
+          {email || "-"}
+        </div>
+      )
+    },
+  },
+  {
+    accessorKey: "phone",
+    header: "Phone",
+    cell: ({ row }) => {
+      const phone = row.getValue("phone") as string
+      return (
+        <div className="text-sm text-[#666666] dark:text-[#888888]">
+          {phone || "-"}
         </div>
       )
     },

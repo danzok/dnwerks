@@ -1,6 +1,18 @@
 import { useState, useEffect, useCallback } from "react";
 import { useUser } from "@/lib/auth";
 
+// Helper function to add mock auth headers in development
+const getAuthHeaders = () => {
+  const isDevelopment = process.env.NODE_ENV === 'development';
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json'
+  };
+  if (isDevelopment) {
+    headers['x-mock-auth'] = 'development';
+  }
+  return headers;
+};
+
 interface Contact {
   id: string;
   firstName: string;
@@ -67,7 +79,9 @@ export function useContactsRealtime(
     
     try {
       setLoading(true);
-      const response = await fetch('/api/customers');
+      const response = await fetch('/api/customers', {
+        headers: getAuthHeaders()
+      });
       
       if (!response.ok) {
         throw new Error('Failed to fetch contacts');
@@ -92,6 +106,7 @@ export function useContactsRealtime(
     try {
       const response = await fetch(`/api/customers/${contactId}`, {
         method: 'DELETE',
+        headers: getAuthHeaders()
       });
 
       if (!response.ok) {
