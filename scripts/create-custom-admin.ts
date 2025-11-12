@@ -73,7 +73,7 @@ console.log(`🌐 Supabase URL: ${supabaseUrl}`)
 console.log('')
 
 async function createCustomAdmin() {
-  const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+  const supabase = createClient(supabaseUrl!, supabaseServiceKey!, {
     auth: {
       autoRefreshToken: false,
       persistSession: false

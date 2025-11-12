@@ -108,7 +108,7 @@ export class InMemoryTaskScheduler implements TaskScheduler {
     // If it's a campaign task, also cancel the campaign job
     if (task.type === 'campaign' && task.campaignId) {
       try {
-        const jobs = await campaignQueue.getJobs(task.userId);
+        const jobs = await campaignQueue.getJobs(task.user_id);
         const campaignJob = jobs.find(job => job.campaignId === task.campaignId);
         if (campaignJob) {
           await campaignQueue.cancelJob(campaignJob.id);
@@ -327,7 +327,7 @@ export async function rescheduleCampaign(
 export async function cancelScheduledCampaign(campaignId: string, userId: string): Promise<void> {
   try {
     // Find and cancel the scheduled task
-    const tasks = await taskScheduler.getTasksForUser(user_id);
+    const tasks = await taskScheduler.getTasksForUser(userId);
     const campaignTask = tasks.find(
       task => task.type === 'campaign' && task.campaignId === campaignId
     );
@@ -337,7 +337,7 @@ export async function cancelScheduledCampaign(campaignId: string, userId: string
     }
 
     // Also cancel the campaign job if it exists
-    const jobs = await campaignQueue.getJobs(user_id);
+    const jobs = await campaignQueue.getJobs(userId);
     const campaignJob = jobs.find(job => job.campaignId === campaignId);
     if (campaignJob && (campaignJob.status === 'pending' || campaignJob.status === 'running')) {
       await campaignQueue.cancelJob(campaignJob.id);
