@@ -199,6 +199,11 @@ export function useContactsRealtime(
         key: 'contacts_updated',
         newValue: Date.now().toString()
       }));
+      
+      // Also trigger a custom event for immediate UI update
+      window.dispatchEvent(new CustomEvent('contactsUpdated', {
+        detail: { contact: transformedContact }
+      }));
 
     } catch (error) {
       console.error('Error updating contact:', error);

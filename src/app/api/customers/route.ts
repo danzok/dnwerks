@@ -45,7 +45,8 @@ export async function GET(request: NextRequest) {
     }
 
     if (tags.length > 0) {
-      query = query.contains('tags', tags)
+      // Use contains for array filtering - each tag in the filter should be present in the contact's tags array
+      query = query.overlaps('tags', tags)
     }
 
     // Apply pagination
