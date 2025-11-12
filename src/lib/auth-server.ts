@@ -15,6 +15,7 @@ export async function auth(request?: NextRequest) {
     if (isDevelopment && request) {
       // For development, check for mock auth header
       const mockAuthHeader = request.headers.get('x-mock-auth')
+      
       if (mockAuthHeader === 'development') {
         const mockUser = {
           id: '7a361a20-86e3-41da-a7d1-1ba13d8b9f2c',
@@ -64,9 +65,13 @@ export async function auth(request?: NextRequest) {
     )
 
     // Get the current user
+    console.log('🔍 [AUTH DEBUG] Getting user from Supabase...')
     const { data: { user }, error } = await supabase.auth.getUser()
 
+    console.log('🔍 [AUTH DEBUG] Supabase auth result:', { user: user?.id, error: error?.message })
+
     if (error || !user) {
+      console.log('🔍 [AUTH DEBUG] No user found, checking development fallback...')
       if (isDevelopment) {
         console.warn('No authentication token found in development, using mock user')
         const mockUser = {
@@ -90,7 +95,7 @@ export async function auth(request?: NextRequest) {
           role: mockProfile.role
         }
       } else {
-        console.warn('No valid session found')
+        console.warn('No valid session found in production')
         return { userId: null, error: 'No valid session' }
       }
     }
