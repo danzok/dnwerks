@@ -37,20 +37,27 @@ export function ThemeProvider({ children, defaultTheme = {} }: ThemeProviderProp
   
   const [systemTheme, setSystemTheme] = useState<'light' | 'dark'>('light');
   const [isTransitioning, setIsTransitioning] = useState(false);
-  
+
+  // Update theme function - moved before usage
+  const updateTheme = (updates: Partial<ThemeConfig>) => {
+    const updated = { ...theme, ...updates };
+    setTheme(updated);
+    localStorage.setItem('theme-preferences', JSON.stringify(updated));
+  };
+
   // Detect system theme changes
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     setSystemTheme(mediaQuery.matches ? 'dark' : 'light');
-    
+
     const handleChange = (e: MediaQueryListEvent) => {
       setSystemTheme(e.matches ? 'dark' : 'light');
     };
-    
+
     mediaQuery.addEventListener('change', handleChange);
     return () => mediaQuery.removeEventListener('change', handleChange);
   }, []);
-  
+
   // Detect reduced motion preference
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -107,13 +114,6 @@ export function ThemeProvider({ children, defaultTheme = {} }: ThemeProviderProp
       }
     }
   }, []);
-  
-  // Save theme preferences
-  const updateTheme = (updates: Partial<ThemeConfig>) => {
-    const updated = { ...theme, ...updates };
-    setTheme(updated);
-    localStorage.setItem('theme-preferences', JSON.stringify(updated));
-  };
   
   const value: ThemeContextType = {
     theme,

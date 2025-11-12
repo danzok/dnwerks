@@ -2,73 +2,71 @@
  * Supabase authentication utilities - SERVER SIDE
  */
 
-import { createSupabaseAdminClient } from '@/lib/supabase/server-admin'
-import { headers, cookies } from 'next/headers'
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 import { NextRequest } from 'next/server'
 
-// Server-side auth for API routes
+// Server-side auth for API routes and layouts
 export async function auth(request?: NextRequest) {
   try {
     // Check if we're in development mode and allow mock auth
     const isDevelopment = process.env.NODE_ENV === 'development'
 
-    if (isDevelopment) {
-      // For development, check for mock auth header or use default mock user
-      if (request) {
-        const mockAuthHeader = request.headers.get('x-mock-auth')
-        if (mockAuthHeader === 'development') {
-          const mockUser = {
-            id: '7a361a20-86e3-41da-a7d1-1ba13d8b9f2c',
-            email: 'admin@dnwerks.com',
-            user_metadata: {
-              name: 'Admin User'
-            }
+    if (isDevelopment && request) {
+      // For development, check for mock auth header
+      const mockAuthHeader = request.headers.get('x-mock-auth')
+      if (mockAuthHeader === 'development') {
+        const mockUser = {
+          id: '7a361a20-86e3-41da-a7d1-1ba13d8b9f2c',
+          email: 'admin@dnwerks.com',
+          user_metadata: {
+            name: 'Admin User'
           }
+        }
 
-          const mockProfile = {
-            id: 'mock-profile-id',
-            user_id: mockUser.id,
-            role: 'admin'
-          }
+        const mockProfile = {
+          id: 'mock-profile-id',
+          user_id: mockUser.id,
+          role: 'admin'
+        }
 
-          console.log('🔐 Using mock authentication for development')
-          return {
-            userId: mockUser.id,
-            user: mockUser,
-            profile: mockProfile,
-            role: mockProfile.role
-          }
+        console.log('🔐 Using mock authentication for development')
+        return {
+          userId: mockUser.id,
+          user: mockUser,
+          profile: mockProfile,
+          role: mockProfile.role
         }
       }
     }
 
-    // Get token from Authorization header or cookies
-    let token: string | null = null
-
-    if (request) {
-      // Try Authorization header first
-      const authHeader = request.headers.get('Authorization')
-      if (authHeader && authHeader.startsWith('Bearer ')) {
-        token = authHeader.substring(7)
+    const cookieStore = await cookies()
+    
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll: () => {
+            try {
+              return cookieStore.getAll().map(cookie => ({
+                name: cookie.name,
+                value: cookie.value
+              }))
+            } catch (error) {
+              // Fallback for edge cases
+              return []
+            }
+          },
+          setAll: () => {} // Not needed for auth checks
+        },
       }
-    }
+    )
 
-    // Fallback to cookies if no token in header
-    if (!token) {
-      const cookieStore = cookies()
-      const allCookies = await cookieStore
-      
-      // Try different possible cookie names for Supabase tokens
-      token = allCookies.get('sb-access-token')?.value ||
-              allCookies.get('supabase.auth.token')?.value ||
-              allCookies.get('sb:auth.token')?.value ||
-              // Try to find any cookie that contains 'access_token' or 'auth'
-              Object.fromEntries(allCookies.getAll().map(c => [c.name, c.value]))['access-token'] ||
-              Object.fromEntries(allCookies.getAll().map(c => [c.name, c.value]))['auth-token'] ||
-              null
-    }
+    // Get the current user
+    const { data: { user }, error } = await supabase.auth.getUser()
 
-    if (!token) {
+    if (error || !user) {
       if (isDevelopment) {
         console.warn('No authentication token found in development, using mock user')
         const mockUser = {
@@ -92,24 +90,13 @@ export async function auth(request?: NextRequest) {
           role: mockProfile.role
         }
       } else {
-        console.warn('No authentication token found')
-        return { userId: null, error: 'No token provided' }
+        console.warn('No valid session found')
+        return { userId: null, error: 'No valid session' }
       }
     }
 
-    // Create Supabase client with service role key for server-side
-    const supabaseAdmin = createSupabaseAdminClient()
-
-    // Verify the JWT token
-    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token)
-
-    if (error || !user) {
-      console.error('Token verification failed:', error?.message)
-      return { userId: null, error: 'Invalid token' }
-    }
-
-    // Check if user has a profile
-    const { data: profile, error: profileError } = await supabaseAdmin
+    // Check user profile
+    const { data: profile, error: profileError } = await supabase
       .from('user_profiles')
       .select('*')
       .eq('user_id', user.id)

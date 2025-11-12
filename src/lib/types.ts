@@ -5,6 +5,7 @@
 
 // Base types
 export type UserRole = 'admin' | 'user';
+export type UserStatus = 'pending' | 'approved' | 'rejected' | 'inactive';
 export type CustomerStatus = 'active' | 'inactive';
 export type CampaignStatus = 'draft' | 'scheduled' | 'sending' | 'sent' | 'failed';
 export type MessageStatus = 'pending' | 'sent' | 'delivered' | 'failed';

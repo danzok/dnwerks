@@ -5,8 +5,8 @@ export interface ScheduledTask {
   id: string;
   type: 'campaign' | 'reminder' | 'cleanup';
   campaignId?: string;
-  userId: string;
-  scheduledAt: Date;
+  user_id: string;
+  scheduled_at: Date;
   status: 'pending' | 'completed' | 'failed' | 'cancelled';
   data: any;
   createdAt: Date;
@@ -15,11 +15,11 @@ export interface ScheduledTask {
 
 export interface TaskScheduler {
   scheduleCampaign(campaign: Campaign, customers: Customer[]): Promise<ScheduledTask>;
-  scheduleReminder(userId: string, message: string, remindAt: Date): Promise<ScheduledTask>;
+  scheduleReminder(user_id: string, message: string, remindAt: Date): Promise<ScheduledTask>;
   scheduleCleanup(taskType: string, runAt: Date): Promise<ScheduledTask>;
   cancelTask(taskId: string): Promise<void>;
   getPendingTasks(): Promise<ScheduledTask[]>;
-  getTasksForUser(userId: string): Promise<ScheduledTask[]>;
+  getTasksForUser(user_id: string): Promise<ScheduledTask[]>;
   processTask(task: ScheduledTask): Promise<void>;
 }
 
@@ -37,8 +37,8 @@ export class InMemoryTaskScheduler implements TaskScheduler {
       id: `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       type: 'campaign',
       campaignId: campaign.id,
-      userId: campaign.userId,
-      scheduledAt: campaign.scheduledAt || new Date(),
+      user_id: campaign.user_id,
+      scheduled_at: campaign.scheduled_at ? new Date(campaign.scheduled_at) : new Date(),
       status: 'pending',
       data: {
         campaign,
@@ -56,12 +56,12 @@ export class InMemoryTaskScheduler implements TaskScheduler {
     return task;
   }
 
-  async scheduleReminder(userId: string, message: string, remindAt: Date): Promise<ScheduledTask> {
+  async scheduleReminder(user_id: string, message: string, remindAt: Date): Promise<ScheduledTask> {
     const task: ScheduledTask = {
       id: `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       type: 'reminder',
-      userId,
-      scheduledAt: remindAt,
+      user_id,
+      scheduled_at: remindAt,
       status: 'pending',
       data: {
         message,
@@ -78,8 +78,8 @@ export class InMemoryTaskScheduler implements TaskScheduler {
     const task: ScheduledTask = {
       id: `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       type: 'cleanup',
-      userId: 'system',
-      scheduledAt: runAt,
+      user_id: 'system',
+      scheduled_at: runAt,
       status: 'pending',
       data: {
         taskType,
@@ -123,8 +123,8 @@ export class InMemoryTaskScheduler implements TaskScheduler {
     return Array.from(this.tasks.values()).filter(task => task.status === 'pending');
   }
 
-  async getTasksForUser(userId: string): Promise<ScheduledTask[]> {
-    return Array.from(this.tasks.values()).filter(task => task.userId === userId);
+  async getTasksForUser(user_id: string): Promise<ScheduledTask[]> {
+    return Array.from(this.tasks.values()).filter(task => task.user_id === user_id);
   }
 
   async processTask(task: ScheduledTask): Promise<void> {
@@ -161,7 +161,7 @@ export class InMemoryTaskScheduler implements TaskScheduler {
 
   private async processReminder(task: ScheduledTask): Promise<void> {
     // In a real implementation, this would send a notification
-    console.log(`Reminder for user ${task.userId}: ${task.data.message}`);
+    console.log(`Reminder for user ${task.user_id}: ${task.data.message}`);
   }
 
   private async processCleanup(task: ScheduledTask): Promise<void> {
@@ -217,7 +217,7 @@ export class InMemoryTaskScheduler implements TaskScheduler {
         const pendingTasks = await this.getPendingTasks();
 
         for (const task of pendingTasks) {
-          if (task.scheduledAt <= now) {
+          if (task.scheduled_at <= now) {
             await this.processTask(task);
           }
         }
@@ -239,14 +239,14 @@ export class InMemoryTaskScheduler implements TaskScheduler {
   }
 
   // Utility methods
-  async getTaskStats(userId: string): Promise<{
+  async getTaskStats(user_id: string): Promise<{
     total: number;
     pending: number;
     completed: number;
     failed: number;
     cancelled: number;
   }> {
-    const tasks = await this.getTasksForUser(userId);
+    const tasks = await this.getTasksForUser(user_id);
 
     return {
       total: tasks.length,
@@ -257,13 +257,13 @@ export class InMemoryTaskScheduler implements TaskScheduler {
     };
   }
 
-  async getUpcomingTasks(userId: string, limit: number = 10): Promise<ScheduledTask[]> {
-    const tasks = await this.getTasksForUser(userId);
+  async getUpcomingTasks(user_id: string, limit: number = 10): Promise<ScheduledTask[]> {
+    const tasks = await this.getTasksForUser(user_id);
     const now = new Date();
 
     return tasks
-      .filter(task => task.status === 'pending' && task.scheduledAt > now)
-      .sort((a, b) => a.scheduledAt.getTime() - b.scheduledAt.getTime())
+      .filter(task => task.status === 'pending' && task.scheduled_at > now)
+      .sort((a, b) => a.scheduled_at.getTime() - b.scheduled_at.getTime())
       .slice(0, limit);
   }
 }
@@ -275,7 +275,7 @@ export const taskScheduler = new InMemoryTaskScheduler();
 export async function scheduleCampaign(campaign: Campaign, customers: Customer[]): Promise<void> {
   try {
     // Validate campaign data
-    if (!campaign.id || !campaign.userId || !campaign.messageBody) {
+    if (!campaign.id || !campaign.user_id || !campaign.message_body) {
       throw new Error('Invalid campaign data');
     }
 
@@ -301,7 +301,7 @@ export async function rescheduleCampaign(
 ): Promise<void> {
   try {
     // Cancel existing scheduled task if any
-    const existingTasks = await taskScheduler.getTasksForUser(campaign.userId);
+    const existingTasks = await taskScheduler.getTasksForUser(campaign.user_id);
     const campaignTask = existingTasks.find(
       task => task.type === 'campaign' && task.campaignId === campaign.id
     );
@@ -311,7 +311,7 @@ export async function rescheduleCampaign(
     }
 
     // Update campaign schedule time
-    campaign.scheduledAt = newScheduledAt;
+    (campaign as any).scheduled_at = newScheduledAt.toISOString();
 
     // Schedule new task
     await scheduleCampaign(campaign, customers);
@@ -327,7 +327,7 @@ export async function rescheduleCampaign(
 export async function cancelScheduledCampaign(campaignId: string, userId: string): Promise<void> {
   try {
     // Find and cancel the scheduled task
-    const tasks = await taskScheduler.getTasksForUser(userId);
+    const tasks = await taskScheduler.getTasksForUser(user_id);
     const campaignTask = tasks.find(
       task => task.type === 'campaign' && task.campaignId === campaignId
     );
@@ -337,7 +337,7 @@ export async function cancelScheduledCampaign(campaignId: string, userId: string
     }
 
     // Also cancel the campaign job if it exists
-    const jobs = await campaignQueue.getJobs(userId);
+    const jobs = await campaignQueue.getJobs(user_id);
     const campaignJob = jobs.find(job => job.campaignId === campaignId);
     if (campaignJob && (campaignJob.status === 'pending' || campaignJob.status === 'running')) {
       await campaignQueue.cancelJob(campaignJob.id);

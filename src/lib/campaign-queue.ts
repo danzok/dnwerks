@@ -6,7 +6,7 @@ import { SMSService, CampaignCustomer, createSMSService } from '@/lib/sms';
 export interface CampaignJob {
   id: string;
   campaignId: string;
-  userId: string;
+  user_id: string;
   status: 'pending' | 'running' | 'completed' | 'failed' | 'paused';
   scheduledAt: Date;
   startedAt?: Date;
@@ -25,7 +25,7 @@ export interface CampaignQueue {
   enqueue(campaign: Campaign, customers: Customer[]): Promise<CampaignJob>;
   dequeue(): Promise<CampaignJob | null>;
   getJob(jobId: string): Promise<CampaignJob | null>;
-  getJobs(userId: string, status?: CampaignJob['status']): Promise<CampaignJob[]>;
+  getJobs(user_id: string, status?: CampaignJob['status']): Promise<CampaignJob[]>;
   processJob(jobId: string): Promise<void>;
   pauseJob(jobId: string): Promise<void>;
   resumeJob(jobId: string): Promise<void>;
@@ -46,7 +46,7 @@ export class InMemoryCampaignQueue implements CampaignQueue {
     const job: CampaignJob = {
       id: `job_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       campaignId: campaign.id,
-      userId: campaign.user_id,
+      user_id: campaign.user_id,
       status: 'pending',
       scheduledAt: campaign.scheduled_at ? new Date(campaign.scheduled_at) : new Date(),
       totalRecipients: customers.length,
@@ -86,8 +86,8 @@ export class InMemoryCampaignQueue implements CampaignQueue {
     return this.jobs.get(jobId) || null;
   }
 
-  async getJobs(userId: string, status?: CampaignJob['status']): Promise<CampaignJob[]> {
-    const jobs = Array.from(this.jobs.values()).filter(job => job.userId === userId);
+  async getJobs(user_id: string, status?: CampaignJob['status']): Promise<CampaignJob[]> {
+    const jobs = Array.from(this.jobs.values()).filter(job => job.user_id === user_id);
     return status ? jobs.filter(job => job.status === status) : jobs;
   }
 
@@ -310,7 +310,7 @@ export class InMemoryCampaignQueue implements CampaignQueue {
     try {
       // Import the database functions
       const { createClient } = await import('@/lib/supabase/server');
-      const supabase = createClient();
+      const supabase = await createClient();
       
       // Store campaign message/customer relationship
       const { error } = await supabase
@@ -318,10 +318,10 @@ export class InMemoryCampaignQueue implements CampaignQueue {
         .upsert({
           campaign_id: customer.campaignId,
           customer_id: customer.customerId,
-          phone_number: customer.phoneNumber,
+          phone_number: customer.customerPhone,
           message_body: customer.messageBody,
           status: customer.status || 'pending',
-          twilio_sid: customer.twilioSid
+          twilio_sid: undefined // Will be set when message is actually sent
         });
 
       if (error) {
