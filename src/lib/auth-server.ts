@@ -56,8 +56,16 @@ export async function auth(request?: NextRequest) {
     // Fallback to cookies if no token in header
     if (!token) {
       const cookieStore = cookies()
-      token = (await cookieStore).get('sb-access-token')?.value ||
-              (await cookieStore).get('supabase.auth.token')?.value || null
+      const allCookies = await cookieStore
+      
+      // Try different possible cookie names for Supabase tokens
+      token = allCookies.get('sb-access-token')?.value ||
+              allCookies.get('supabase.auth.token')?.value ||
+              allCookies.get('sb:auth.token')?.value ||
+              // Try to find any cookie that contains 'access_token' or 'auth'
+              Object.fromEntries(allCookies.getAll().map(c => [c.name, c.value]))['access-token'] ||
+              Object.fromEntries(allCookies.getAll().map(c => [c.name, c.value]))['auth-token'] ||
+              null
     }
 
     if (!token) {
