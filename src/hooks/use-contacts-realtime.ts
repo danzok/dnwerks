@@ -23,6 +23,9 @@ interface Contact {
   status: "active" | "inactive";
   tags: string[];
   createdAt: Date;
+  company?: string;
+  address?: string;
+  notes?: string;
 }
 
 interface ContactStats {
@@ -41,6 +44,7 @@ interface UseContactsRealtimeResult {
   lastUpdated: Date | null;
   refreshContacts: () => Promise<void>;
   deleteContact: (id: string) => Promise<void>;
+  updateContact: (id: string, data: Partial<Contact>) => Promise<void>;
   availableTags: string[];
   pagination: {
     page: number;
@@ -79,7 +83,10 @@ export function useContactsRealtime(
     state: customer.state || '',
     status: (customer.status as "active" | "inactive") || "active",
     tags: customer.tags || [],
-    createdAt: new Date(customer.created_at || customer.createdAt)
+    createdAt: new Date(customer.created_at || customer.createdAt),
+    company: customer.company || '',
+    address: customer.address || '',
+    notes: customer.notes || ''
   }), []);
 
   // Fetch contacts from API
@@ -148,6 +155,56 @@ export function useContactsRealtime(
       throw error;
     }
   }, []);
+
+  // Update contact
+  const updateContact = useCallback(async (contactId: string, data: Partial<Contact>) => {
+    try {
+      // Transform data to match API format
+      const updateData: any = {
+        firstName: data.firstName,
+        lastName: data.lastName,
+        email: data.email,
+        phone: data.phone,
+        state: data.state,
+        status: data.status,
+        tags: data.tags,
+        company: data.company,
+        address: data.address,
+        notes: data.notes,
+      };
+
+      const response = await fetch(`/api/customers/${contactId}`, {
+        method: 'PATCH',
+        headers: {
+          ...getAuthHeaders(),
+        },
+        body: JSON.stringify(updateData)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update contact');
+      }
+
+      const updatedContact = await response.json();
+      const transformedContact = transformContact(updatedContact);
+
+      // Update local state immediately
+      setContacts(prev => prev.map(contact =>
+        contact.id === contactId ? transformedContact : contact
+      ));
+      setLastUpdated(new Date());
+      
+      // Trigger storage event for cross-tab sync
+      window.dispatchEvent(new StorageEvent('storage', {
+        key: 'contacts_updated',
+        newValue: Date.now().toString()
+      }));
+
+    } catch (error) {
+      console.error('Error updating contact:', error);
+      throw error;
+    }
+  }, [transformContact]);
 
   // Set page function
   const setPage = useCallback((page: number) => {
@@ -231,6 +288,7 @@ export function useContactsRealtime(
     lastUpdated,
     refreshContacts: () => fetchContacts(),
     deleteContact,
+    updateContact,
     availableTags,
     pagination,
     setPage,

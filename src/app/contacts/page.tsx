@@ -117,6 +117,7 @@ export default function ContactsPage() {
     lastUpdated,
     refreshContacts,
     deleteContact,
+    updateContact,
     availableTags,
     pagination,
     setPage
@@ -141,6 +142,24 @@ export default function ContactsPage() {
           className: 'bg-gray-100 text-gray-800 dark:bg-gray-900/50 dark:text-gray-200'
         };
     }
+  };
+
+  // Handle edit contact
+  const handleEditContact = (contact: any) => {
+    setEditingContact(contact);
+    setFormData({
+      first_name: contact.firstName || '',
+      last_name: contact.lastName || '',
+      email: contact.email || '',
+      phone: contact.phone || '',
+      company: contact.company || '',
+      state: contact.state || '',
+      status: contact.status || 'active',
+      address: contact.address || '',
+      notes: contact.notes || '',
+      tags: contact.tags || []
+    });
+    setShowContactForm(true);
   };
 
   // Form handler functions
@@ -208,33 +227,40 @@ export default function ContactsPage() {
       
       const contactData = {
         phone: phoneResult.formatted,
-        firstName: formData.first_name.trim() || null,
-        lastName: formData.last_name.trim() || null,
-        email: formData.email.trim() || null,
-        company: formData.company.trim() || null,
-        state: formData.state || phoneResult.state || null,
-        status: formData.status,
-        address: formData.address.trim() || null,
-        notes: formData.notes.trim() || null,
+        firstName: formData.first_name.trim() || undefined,
+        lastName: formData.last_name.trim() || undefined,
+        email: formData.email.trim() || undefined,
+        company: formData.company.trim() || undefined,
+        state: formData.state || phoneResult.state || undefined,
+        status: formData.status as "active" | "inactive",
+        address: formData.address.trim() || undefined,
+        notes: formData.notes.trim() || undefined,
         tags: formData.tags
       };
       
-      const response = await fetch('/api/customers', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(contactData)
-      });
-      
-      if (!response.ok) {
-        const error = await response.json();
-        if (response.status === 409) {
-          setFormErrors({ phone: 'This phone number already exists' });
-          return;
+      if (editingContact) {
+        // Update existing contact
+        await updateContact(editingContact.id, contactData);
+        toast.success('Contact updated successfully!');
+      } else {
+        // Create new contact
+        const response = await fetch('/api/customers', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(contactData)
+        });
+        
+        if (!response.ok) {
+          const error = await response.json();
+          if (response.status === 409) {
+            setFormErrors({ phone: 'This phone number already exists' });
+            return;
+          }
+          throw new Error(error.message || 'Failed to create contact');
         }
-        throw new Error(error.message || 'Failed to create contact');
+        
+        toast.success('Contact added successfully!');
       }
-      
-      toast.success('Contact added successfully!');
       
       // Reset form and close dialog
       resetForm();
@@ -245,8 +271,8 @@ export default function ContactsPage() {
       refreshContacts();
       
     } catch (error) {
-      console.error('Error creating contact:', error);
-      toast.error('Failed to add contact. Please try again.');
+      console.error('Error saving contact:', error);
+      toast.error(`Failed to ${editingContact ? 'update' : 'add'} contact. Please try again.`);
     } finally {
       setFormLoading(false);
     }
@@ -355,11 +381,12 @@ export default function ContactsPage() {
               <div>
                 <div className="overflow-x-auto">
                   <VercelDataTable
-                    columns={createContactColumns(deleteContact || undefined)}
+                    columns={createContactColumns(deleteContact || undefined, handleEditContact)}
                     data={filteredContacts}
                     loading={loading}
                     error={error || undefined}
                     onDeleteContact={deleteContact}
+                    onEditContact={handleEditContact}
                   />
                 </div>
               </div>

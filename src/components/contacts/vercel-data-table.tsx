@@ -43,6 +43,7 @@ interface DataTableProps<TData, TValue> {
   loading?: boolean
   error?: string
   onDeleteContact?: (id: string) => void
+  onEditContact?: (contact: any) => void
 }
 
 // Helper function to render status badges - moved outside component scope
@@ -65,6 +66,7 @@ export function VercelDataTable<TData, TValue>({
   loading = false,
   error,
   onDeleteContact,
+  onEditContact,
 }: DataTableProps<TData, TValue>) {
   const table = useReactTable({
     data,
@@ -147,7 +149,10 @@ export function VercelDataTable<TData, TValue>({
 }
 
 // Enhanced column definitions with Vercel styling
-export const createContactColumns = (onDeleteContact?: (id: string) => void): ColumnDef<any>[] => [
+export const createContactColumns = (
+  onDeleteContact?: (id: string) => void,
+  onEditContact?: (contact: any) => void
+): ColumnDef<any>[] => [
   {
     accessorKey: "status",
     header: "Status",
@@ -300,10 +305,11 @@ export const createContactColumns = (onDeleteContact?: (id: string) => void): Co
             <DropdownMenuContent align="end" className="bg-white dark:bg-[#111111] border-[#EAEAEA] dark:border-[#333333] shadow-lg">
               <DropdownMenuItem
                 onClick={() => {
-                  // Edit contact logic here
-                  console.log('Edit contact:', contact.id)
+                  if (onEditContact) {
+                    onEditContact(contact)
+                  }
                 }}
-                className="text-black dark:text-white hover:bg-[#F5F5F5] dark:hover:bg-[#1A1A1A] focus:bg-[#EAEAEA] dark:focus:bg-[#333333]"
+                className="text-black dark:text-white hover:bg-[#F5F5F5] dark:hover:bg-[#1A1A1A] focus:bg-[#EAEAEA] dark:focus-bg-[#333333]"
               >
                 <Edit className="mr-2 h-4 w-4" />
                 Edit
