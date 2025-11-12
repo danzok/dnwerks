@@ -21,6 +21,7 @@ interface Contact {
   phone: string;
   state: string;
   status: "active" | "inactive";
+  tags: string[];
   createdAt: Date;
 }
 
@@ -40,17 +41,33 @@ interface UseContactsRealtimeResult {
   lastUpdated: Date | null;
   refreshContacts: () => Promise<void>;
   deleteContact: (id: string) => Promise<void>;
+  availableTags: string[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+  setPage: (page: number) => void;
 }
 
 export function useContactsRealtime(
   searchQuery: string = "",
-  selectedState: string = "all"
+  selectedState: string = "all",
+  selectedTags: string[] = []
 ): UseContactsRealtimeResult {
   const { user } = useUser();
   const [contacts, setContacts] = useState<Contact[]>([]);
+  const [availableTags, setAvailableTags] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 10,
+    total: 0,
+    totalPages: 0,
+  });
 
   // Transform database format to Contact format
   const transformContact = useCallback((customer: any): Contact => ({
@@ -61,16 +78,26 @@ export function useContactsRealtime(
     phone: customer.phone || '',
     state: customer.state || '',
     status: (customer.status as "active" | "inactive") || "active",
+    tags: customer.tags || [],
     createdAt: new Date(customer.created_at || customer.createdAt)
   }), []);
 
   // Fetch contacts from API
-  const fetchContacts = useCallback(async () => {
+  const fetchContacts = useCallback(async (page: number = pagination.page) => {
     if (!user) return;
     
     try {
       setLoading(true);
-      const response = await fetch('/api/customers', {
+      
+      // Build query string
+      const params = new URLSearchParams();
+      if (searchQuery) params.append('search', searchQuery);
+      if (selectedState !== 'all') params.append('state', selectedState);
+      if (selectedTags.length > 0) params.append('tags', selectedTags.join(','));
+      params.append('page', page.toString());
+      params.append('limit', pagination.limit.toString());
+
+      const response = await fetch(`/api/customers?${params}`, {
         headers: getAuthHeaders()
       });
       
@@ -78,10 +105,12 @@ export function useContactsRealtime(
         throw new Error('Failed to fetch contacts');
       }
       
-      const data = await response.json();
-      const transformedContacts = data.map(transformContact);
+      const result = await response.json();
+      const transformedContacts = result.data.map(transformContact);
       
       setContacts(transformedContacts);
+      setAvailableTags(result.tags || []);
+      setPagination(result.pagination);
       setError(null);
       setLastUpdated(new Date());
     } catch (err) {
@@ -90,7 +119,7 @@ export function useContactsRealtime(
     } finally {
       setLoading(false);
     }
-  }, [user, transformContact]);
+  }, [user, transformContact, searchQuery, selectedState, selectedTags, pagination.page, pagination.limit]);
 
   // Delete contact
   const deleteContact = useCallback(async (contactId: string) => {
@@ -120,9 +149,14 @@ export function useContactsRealtime(
     }
   }, []);
 
+  // Set page function
+  const setPage = useCallback((page: number) => {
+    setPagination(prev => ({ ...prev, page }));
+  }, []);
+
   // Calculate stats
   const stats: ContactStats = {
-    total: contacts.length,
+    total: pagination.total,
     active: contacts.filter(c => c.status === 'active').length,
     inactive: contacts.filter(c => c.status === 'inactive').length,
     recentlyAdded: contacts.filter(c => {
@@ -132,7 +166,7 @@ export function useContactsRealtime(
     }).length
   };
 
-  // Filter contacts
+  // Filter contacts (now done on server side, but keep for compatibility)
   const filteredContacts = contacts.filter(contact => {
     const matchesSearch = searchQuery === "" ||
       contact.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -141,8 +175,10 @@ export function useContactsRealtime(
       contact.phone.includes(searchQuery);
 
     const matchesState = selectedState === "all" || contact.state === selectedState;
+    const matchesTags = selectedTags.length === 0 ||
+      selectedTags.every(tag => contact.tags.includes(tag));
 
-    return matchesSearch && matchesState;
+    return matchesSearch && matchesState && matchesTags;
   });
 
   // Initial fetch
@@ -150,13 +186,18 @@ export function useContactsRealtime(
     fetchContacts();
   }, [fetchContacts]);
 
+  // Fetch when page changes
+  useEffect(() => {
+    fetchContacts(pagination.page);
+  }, [pagination.page]);
+
   // Auto-refresh every 30 seconds
   useEffect(() => {
     if (!user) return;
     
-    const interval = setInterval(fetchContacts, 30000);
+    const interval = setInterval(() => fetchContacts(pagination.page), 30000);
     return () => clearInterval(interval);
-  }, [user, fetchContacts]);
+  }, [user, fetchContacts, pagination.page]);
 
   // Listen for real-time updates
   useEffect(() => {
@@ -188,7 +229,10 @@ export function useContactsRealtime(
     loading,
     error,
     lastUpdated,
-    refreshContacts: fetchContacts,
-    deleteContact
+    refreshContacts: () => fetchContacts(),
+    deleteContact,
+    availableTags,
+    pagination,
+    setPage,
   };
 }

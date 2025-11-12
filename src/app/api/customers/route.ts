@@ -18,18 +18,68 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Get all customers for this user using Supabase
-    const { data: customers, error } = await supabase
-      .from('customers')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
+    const { searchParams } = new URL(request.url)
+    const search = searchParams.get('search') || ''
+    const state = searchParams.get('state') || 'all'
+    const tagsParam = searchParams.get('tags')
+    const page = parseInt(searchParams.get('page') || '1')
+    const limit = parseInt(searchParams.get('limit') || '10')
+    const offset = (page - 1) * limit
 
-    if (error) {
-      throw error
+    // Parse tags from comma-separated string
+    const tags = tagsParam ? tagsParam.split(',').filter(Boolean) : []
+
+    // Build query
+    let query = supabase
+      .from('customers')
+      .select('*', { count: 'exact' })
+      .eq('user_id', userId)
+
+    // Apply filters
+    if (search) {
+      query = query.or(`first_name.ilike.%${search}%,last_name.ilike.%${search}%,email.ilike.%${search}%,phone.ilike.%${search}%`)
     }
 
-    return NextResponse.json(customers)
+    if (state !== 'all') {
+      query = query.eq('state', state)
+    }
+
+    if (tags.length > 0) {
+      query = query.contains('tags', tags)
+    }
+
+    // Apply pagination
+    const { data: customers, error, count } = await query
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1)
+
+    if (error) throw error
+
+    // Get all unique tags for filtering options
+    const { data: tagsData } = await supabase
+      .from('customers')
+      .select('tags')
+      .eq('user_id', userId)
+      .not('tags', 'eq', '{}')
+
+    const allTags = [...new Set(
+      tagsData?.flatMap(customer => customer.tags || []) || []
+    )].sort()
+
+    const totalPages = Math.ceil((count || 0) / limit)
+
+    return NextResponse.json({
+      data: customers,
+      pagination: {
+        page,
+        limit,
+        total: count || 0,
+        totalPages,
+        hasNext: page < totalPages,
+        hasPrev: page > 1,
+      },
+      tags: allTags,
+    })
     
   } catch (error) {
     console.error('API Error:', error)
@@ -50,7 +100,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { phone, firstName, lastName, email, state } = body
+    const { phone, firstName, lastName, email, state, tags } = body
 
     // Validate required fields
     if (!phone) {
@@ -95,7 +145,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Create new customer
+    // Create new customer with tags
     const { data: newCustomer, error } = await supabase
       .from('customers')
       .insert({
@@ -105,6 +155,7 @@ export async function POST(request: NextRequest) {
         last_name: lastName?.trim() || null,
         email: email?.trim() || null,
         state: state || phoneResult.state || null,
+        tags: tags && Array.isArray(tags) ? tags : [],
         status: 'active'
       })
       .select()

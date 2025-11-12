@@ -15,6 +15,9 @@ import { RealtimeBar } from "@/components/contacts/realtime-bar";
 import { ContactsByStateChart } from "@/components/contacts/contacts-by-state-chart";
 import { useContactsRealtime } from "@/hooks/use-contacts-realtime";
 import { Plus, Upload, Search } from "lucide-react";
+import { MultiSelect } from "@/components/ui/multi-select";
+import { TagInput } from "@/components/contacts/tag-input";
+import { Pagination } from "@/components/contacts/pagination";
 import {
   Dialog,
   DialogContent,
@@ -84,6 +87,7 @@ const US_STATES = [
 export default function ContactsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedState, setSelectedState] = useState("all");
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   
   // Contact form state
   const [showContactForm, setShowContactForm] = useState(false);
@@ -98,11 +102,12 @@ export default function ContactsPage() {
     state: '',
     status: 'active',
     address: '',
-    notes: ''
+    notes: '',
+    tags: [] as string[]
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   
-  // Use the realtime contacts hook without pagination
+  // Use the realtime contacts hook with tag filtering and pagination
   const {
     contacts,
     stats,
@@ -111,8 +116,11 @@ export default function ContactsPage() {
     error,
     lastUpdated,
     refreshContacts,
-    deleteContact
-  } = useContactsRealtime(searchQuery, selectedState);
+    deleteContact,
+    availableTags,
+    pagination,
+    setPage
+  } = useContactsRealtime(searchQuery, selectedState, selectedTags);
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
@@ -146,7 +154,8 @@ export default function ContactsPage() {
       state: '',
       status: 'active',
       address: '',
-      notes: ''
+      notes: '',
+      tags: []
     });
     setFormErrors({});
   };
@@ -206,7 +215,8 @@ export default function ContactsPage() {
         state: formData.state || phoneResult.state || null,
         status: formData.status,
         address: formData.address.trim() || null,
-        notes: formData.notes.trim() || null
+        notes: formData.notes.trim() || null,
+        tags: formData.tags
       };
       
       const response = await fetch('/api/customers', {
@@ -312,6 +322,20 @@ export default function ContactsPage() {
                   </Select>
                 </div>
 
+                {/* Tag Filter */}
+                <div className="w-full lg:w-64">
+                  <label className="block text-xs font-medium text-[#999999] dark:text-[#666666] uppercase tracking-wide mb-1.5">
+                    Filter by Tags
+                  </label>
+                  <MultiSelect
+                    options={availableTags.map(tag => ({ value: tag, label: tag }))}
+                    selected={selectedTags}
+                    onChange={setSelectedTags}
+                    placeholder="Filter by tags..."
+                    searchable={true}
+                  />
+                </div>
+
                 {/* Action Buttons */}
                 <div className="flex gap-2">
                   <Button size="sm" className="h-9 px-3 text-sm" onClick={() => setShowContactForm(true)}>
@@ -350,6 +374,8 @@ export default function ContactsPage() {
                   {filteredContacts.length !== stats.total && ` • Total: ${stats.total} contacts`}
                   {selectedState !== "all" && ` in ${selectedState}`}
                   {searchQuery && ` matching "${searchQuery}"`}
+                  {selectedTags.length > 0 && ` with tags: ${selectedTags.join(', ')}`}
+                  {pagination.total > pagination.limit && ` (Page ${pagination.page} of ${pagination.totalPages})`}
                 </p>
               </div>
             )}
@@ -515,6 +541,20 @@ export default function ContactsPage() {
                         value={formData.address}
                         onChange={(e) => setFormData({...formData, address: e.target.value})}
                         className="mt-1 bg-white dark:bg-[#111111] border-[#EAEAEA] dark:border-[#333333] text-black dark:text-white"
+                      />
+                    </div>
+
+                    {/* Tags */}
+                    <div className="md:col-span-2">
+                      <Label htmlFor="tags" className="text-sm font-medium text-black dark:text-white">
+                        Tags
+                      </Label>
+                      <TagInput
+                        value={formData.tags}
+                        onChange={(tags) => setFormData({...formData, tags})}
+                        placeholder="Add tags..."
+                        suggestions={availableTags}
+                        maxTags={10}
                       />
                     </div>
 

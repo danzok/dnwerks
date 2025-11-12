@@ -239,6 +239,35 @@ export const createContactColumns = (onDeleteContact?: (id: string) => void): Co
     },
   },
   {
+    accessorKey: "tags",
+    header: "Tags",
+    cell: ({ row }) => {
+      const tags = row.getValue("tags") as string[]
+      return (
+        <div className="flex flex-wrap gap-1">
+          {tags.length === 0 ? (
+            <span className="text-xs text-[#999999] dark:text-[#666666]">-</span>
+          ) : (
+            tags.slice(0, 3).map((tag, index) => (
+              <Badge
+                key={index}
+                variant="outline"
+                className="text-xs bg-[#F5F5F5] dark:bg-[#1A1A1A] border-[#EAEAEA] dark:border-[#333333] text-[#666666] dark:text-[#888888]"
+              >
+                {tag}
+              </Badge>
+            ))
+          )}
+          {tags.length > 3 && (
+            <span className="text-xs text-[#999999] dark:text-[#666666]">
+              +{tags.length - 3}
+            </span>
+          )}
+        </div>
+      )
+    },
+  },
+  {
     accessorKey: "createdAt",
     header: "Created",
     cell: ({ row }) => {
