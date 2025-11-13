@@ -19,6 +19,7 @@ import { Plus, Upload, Search } from "lucide-react";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { TagInput } from "@/components/contacts/tag-input";
 import { Pagination } from "@/components/contacts/pagination";
+import { PerformanceMonitor } from "@/components/performance-monitor";
 import {
   Dialog,
   DialogContent,
@@ -306,7 +307,8 @@ export default function ContactsPage() {
       <ClientSafeSidebar variant="inset" />
       <SidebarInset>
         <SiteHeader />
-        <div className="flex-1 min-h-screen bg-[#FAFAFA] dark:bg-black">
+        <PerformanceMonitor />
+        <div className="flex-1 min-h-screen bg-[#FAFAFA] dark:bg-black" data-auth-loaded="true">
           <div className="max-w-7xl mx-auto px-6 py-8">
 
             {/* Header */}

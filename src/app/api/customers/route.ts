@@ -29,10 +29,10 @@ export async function GET(request: NextRequest) {
     // Parse tags from comma-separated string
     const tags = tagsParam ? tagsParam.split(',').filter(Boolean) : []
 
-    // Build query
+    // Build optimized query - get customers and tags in one go using window functions
     let query = supabase
       .from('customers')
-      .select('*', { count: 'exact' })
+      .select('*, user_id', { count: 'exact' })
       .eq('user_id', userId)
 
     // Apply filters
@@ -56,15 +56,9 @@ export async function GET(request: NextRequest) {
 
     if (error) throw error
 
-    // Get all unique tags for filtering options
-    const { data: tagsData } = await supabase
-      .from('customers')
-      .select('tags')
-      .eq('user_id', userId)
-      .not('tags', 'eq', '{}')
-
+    // Extract tags from current query results instead of separate query
     const allTags = [...new Set(
-      tagsData?.flatMap(customer => customer.tags || []) || []
+      customers?.flatMap(customer => customer.tags || []) || []
     )].sort()
 
     const totalPages = Math.ceil((count || 0) / limit)

@@ -6,6 +6,10 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextRequest } from 'next/server'
 
+// Server-side auth cache to reduce repeated calls
+const authCache = new Map<string, { data: any; timestamp: number }>()
+const CACHE_DURATION = 30000 // 30 seconds
+
 // Server-side auth for API routes and layouts
 export async function auth(request?: NextRequest) {
   try {
@@ -42,7 +46,22 @@ export async function auth(request?: NextRequest) {
     }
 
     const cookieStore = await cookies()
-    
+
+    // Create cache key from cookies
+    const cacheKey = cookieStore.getAll()
+      .filter(cookie => cookie.name.startsWith('sb-'))
+      .map(cookie => `${cookie.name}=${cookie.value}`)
+      .join('|')
+
+    // Check cache first
+    const cached = authCache.get(cacheKey)
+    if (cached && (Date.now() - cached.timestamp) < CACHE_DURATION) {
+      if (isDevelopment) {
+        console.log('🔍 [AUTH DEBUG] Using cached auth result')
+      }
+      return cached.data
+    }
+
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -65,14 +84,18 @@ export async function auth(request?: NextRequest) {
     )
 
     // Get the current user
-    console.log('🔍 [AUTH DEBUG] Getting user from Supabase...')
+    if (isDevelopment) {
+      console.log('🔍 [AUTH DEBUG] Getting user from Supabase...')
+    }
     const { data: { user }, error } = await supabase.auth.getUser()
 
-    console.log('🔍 [AUTH DEBUG] Supabase auth result:', { user: user?.id, error: error?.message })
+    if (isDevelopment) {
+      console.log('🔍 [AUTH DEBUG] Supabase auth result:', { user: user?.id, error: error?.message })
+    }
 
     if (error || !user) {
-      console.log('🔍 [AUTH DEBUG] No user found, checking development fallback...')
       if (isDevelopment) {
+        console.log('🔍 [AUTH DEBUG] No user found, checking development fallback...')
         console.warn('No authentication token found in development, using mock user')
         const mockUser = {
           id: '7a361a20-86e3-41da-a7d1-1ba13d8b9f2c',
@@ -88,15 +111,21 @@ export async function auth(request?: NextRequest) {
           role: 'admin'
         }
 
-        return {
+        const authResult = {
           userId: mockUser.id,
           user: mockUser,
           profile: mockProfile,
           role: mockProfile.role
         }
+
+        // Cache mock result
+        authCache.set(cacheKey, { data: authResult, timestamp: Date.now() })
+        return authResult
       } else {
-        console.warn('No valid session found in production')
-        return { userId: null, error: 'No valid session' }
+        if (isDevelopment) console.warn('No valid session found in production')
+        const authResult = { userId: null, error: 'No valid session' }
+        authCache.set(cacheKey, { data: authResult, timestamp: Date.now() })
+        return authResult
       }
     }
 
@@ -109,15 +138,21 @@ export async function auth(request?: NextRequest) {
 
     if (profileError || !profile) {
       console.warn('User profile not found:', user.id)
-      return { userId: null, error: 'User profile not found' }
+      const authResult = { userId: null, error: 'User profile not found' }
+      authCache.set(cacheKey, { data: authResult, timestamp: Date.now() })
+      return authResult
     }
 
-    return {
+    const authResult = {
       userId: user.id,
       user,
       profile,
       role: profile.role
     }
+
+    // Cache successful auth result
+    authCache.set(cacheKey, { data: authResult, timestamp: Date.now() })
+    return authResult
 
   } catch (error) {
     console.error('Auth error:', error)

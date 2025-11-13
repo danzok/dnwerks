@@ -96,6 +96,13 @@ function BulkEditDialog({ isOpen, onClose, selectedIds, selectedCount, onBulkUpd
         return
       }
 
+      // Show confirmation for bulk operations
+      const confirmMessage = `Are you sure you want to update ${selectedCount} customer${selectedCount > 1 ? 's' : ''}?`
+      if (!window.confirm(confirmMessage)) {
+        setLoading(false)
+        return
+      }
+
       await onBulkUpdate({
         customerIds: selectedIds,
         updates
@@ -146,13 +153,40 @@ function BulkEditDialog({ isOpen, onClose, selectedIds, selectedCount, onBulkUpd
               onChange={(tags) => setFormData(prev => ({ ...prev, tags }))}
               placeholder="Add tags to all selected customers..."
             />
+            {formData.tags.length > 0 && (
+              <p className="text-sm text-muted-foreground">
+                Will replace existing tags with: {formData.tags.join(', ')}
+              </p>
+            )}
+          </div>
+
+          <div className="bg-muted/50 p-3 rounded-md">
+            <p className="text-sm font-medium">Summary</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              • Selected: {selectedCount} customer{selectedCount > 1 ? 's' : ''}
+            </p>
+            {formData.status && (
+              <p className="text-xs text-muted-foreground">
+                • Status will be set to: <span className="font-medium">{formData.status}</span>
+              </p>
+            )}
+            {formData.tags.length > 0 && (
+              <p className="text-xs text-muted-foreground">
+                • Tags will be replaced with: <span className="font-medium">{formData.tags.join(', ')}</span>
+              </p>
+            )}
+            {!formData.status && formData.tags.length === 0 && (
+              <p className="text-xs text-muted-foreground italic">
+                • No changes selected
+              </p>
+            )}
           </div>
 
           <div className="flex justify-end gap-3 pt-4">
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel
             </Button>
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" disabled={loading || (!formData.status && formData.tags.length === 0)}>
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

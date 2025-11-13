@@ -10,39 +10,96 @@ import { Session } from '@supabase/supabase-js'
 
 export const supabase = createClient()
 
+// Simple auth cache to prevent repeated checks
+let authCache: {
+  user: any | null
+  timestamp: number
+  loading: boolean
+} = {
+  user: null,
+  timestamp: 0,
+  loading: true
+}
+
+const CACHE_DURATION = 5000 // 5 seconds
+
 // Client-side hook for components
 export function useUser() {
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-  console.log('🔐 useUser: Starting auth check...')
-  
-  // Get initial user with proper verification
-  supabase.auth.getUser().then(({ data: { user } }: { data: { user: any } }) => {
-    console.log('🔐 useUser: Initial user:', user)
-    setUser(user ?? null)
-    setLoading(false)
-  }).catch((error: any) => {
-    console.error('🔐 useUser: Error getting initial user:', error)
-    setUser(null)
-    setLoading(false)
-  })
+    const now = Date.now()
+
+    // Check if we have cached auth data that's still valid
+    if (authCache.user !== null && (now - authCache.timestamp) < CACHE_DURATION) {
+      setUser(authCache.user)
+      setLoading(false)
+      return
+    }
+
+    // Skip development logging in production
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔐 useUser: Starting auth check...')
+    }
+
+    // Get initial user with proper verification
+    supabase.auth.getUser().then(({ data: { user } }: { data: { user: any } }) => {
+      // Update cache
+      authCache = {
+        user: user ?? null,
+        timestamp: now,
+        loading: false
+      }
+
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔐 useUser: Initial user:', user)
+      }
+      setUser(user ?? null)
+      setLoading(false)
+    }).catch((error: any) => {
+      // Update cache on error
+      authCache = {
+        user: null,
+        timestamp: now,
+        loading: false
+      }
+
+      if (process.env.NODE_ENV === 'development') {
+        console.error('🔐 useUser: Error getting initial user:', error)
+      }
+      setUser(null)
+      setLoading(false)
+    })
 
   // Listen for auth changes
   const {
     data: { subscription },
   } = supabase.auth.onAuthStateChange(async (_event: string, session: Session | null) => {
-    console.log('🔐 useUser: Auth state changed:', session)
-    
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔐 useUser: Auth state changed:', session)
+    }
+
+    // Update cache immediately for better UX
+    const now = Date.now()
+    authCache = {
+      user: session?.user ?? null,
+      timestamp: now,
+      loading: false
+    }
+
     // When auth state changes, verify the user with getUser() for security
     if (session?.user) {
       const { data: { user }, error } = await supabase.auth.getUser()
       if (error) {
-        console.error('🔐 useUser: Error verifying user:', error)
+        if (process.env.NODE_ENV === 'development') {
+          console.error('🔐 useUser: Error verifying user:', error)
+        }
         setUser(null)
+        authCache.user = null
       } else {
         setUser(user)
+        authCache.user = user
       }
     } else {
       setUser(null)

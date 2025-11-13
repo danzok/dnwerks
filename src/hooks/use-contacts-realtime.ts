@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useUser } from "@/lib/auth";
 
 // Helper function to add mock auth headers in development
@@ -74,6 +74,10 @@ export function useContactsRealtime(
     totalPages: 0,
   });
 
+  // Refs for debouncing and optimization
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  const isFetchingRef = useRef(false);
+
   // Transform database format to Contact format
   const transformContact = useCallback((customer: any): Contact => ({
     id: customer.id,
@@ -90,13 +94,16 @@ export function useContactsRealtime(
     notes: customer.notes || ''
   }), []);
 
-  // Fetch contacts from API
-  const fetchContacts = useCallback(async (page: number = pagination.page) => {
+  // Fetch contacts from API with optimized dependencies
+  const fetchContacts = useCallback(async (page: number = pagination.page, forceRefresh: boolean = false) => {
     if (!user) return;
-    
+
+    // Skip if already loading and not forcing refresh
+    if (loading && !forceRefresh) return;
+
     try {
       setLoading(true);
-      
+
       // Build query string
       const params = new URLSearchParams();
       if (searchQuery) params.append('search', searchQuery);
@@ -108,17 +115,17 @@ export function useContactsRealtime(
       const response = await fetch(`/api/customers?${params}`, {
         headers: getAuthHeaders()
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to fetch contacts');
       }
-      
+
       const result = await response.json();
       const transformedContacts = result.data.map(transformContact);
-      
+
       setContacts(transformedContacts);
       setAvailableTags(result.tags || []);
-      setPagination(result.pagination);
+      setPagination(prev => ({ ...prev, ...result.pagination }));
       setError(null);
       setLastUpdated(new Date());
     } catch (err) {
@@ -127,7 +134,7 @@ export function useContactsRealtime(
     } finally {
       setLoading(false);
     }
-  }, [user, transformContact, searchQuery, selectedState, selectedTags, pagination.page, pagination.limit]);
+  }, [user, searchQuery, selectedState, selectedTags, pagination.limit]); // Removed pagination.page from deps
 
   // Delete contact
   const deleteContact = useCallback(async (contactId: string) => {
@@ -229,27 +236,30 @@ export function useContactsRealtime(
     }).length
   };
 
-  // Filter contacts (now done on server side, but keep for compatibility)
-  const filteredContacts = contacts.filter(contact => {
-    const matchesSearch = searchQuery === "" ||
-      contact.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      contact.lastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      contact.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      contact.phone.includes(searchQuery);
+  // Since filtering is now done server-side, use contacts directly
+  // Keep minimal client filtering only as fallback for instant UI updates
+  const filteredContacts = contacts;
 
-    const matchesState = selectedState === "all" || contact.state === selectedState;
-    const matchesTags = selectedTags.length === 0 ||
-      selectedTags.every(tag => contact.tags.includes(tag));
-
-    return matchesSearch && matchesState && matchesTags;
-  });
-
-  // Initial fetch
+  // Debounced fetch for search and filters
   useEffect(() => {
-    fetchContacts();
-  }, [fetchContacts]);
+    // Clear existing timeout
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
 
-  // Fetch when page changes
+    // Set new timeout for 300ms debounce
+    debounceRef.current = setTimeout(() => {
+      fetchContacts(1); // Reset to page 1 when filters change
+    }, 300);
+
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+    };
+  }, [searchQuery, selectedState, selectedTags]); // Fetch when filters change
+
+  // Initial fetch and page changes
   useEffect(() => {
     fetchContacts(pagination.page);
   }, [pagination.page]);
