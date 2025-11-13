@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { VercelDataTable, createContactColumns } from "@/components/contacts/vercel-data-table";
+import { EnhancedDataTable } from "@/components/contacts/enhanced-data-table";
 import { ContactsStats } from "@/components/contacts/contacts-stats";
 import { RealtimeBar } from "@/components/contacts/realtime-bar";
 import { ContactsByStateChart } from "@/components/contacts/contacts-by-state-chart";
@@ -160,6 +161,28 @@ export default function ContactsPage() {
       tags: contact.tags || []
     });
     setShowContactForm(true);
+  };
+
+  // Handle bulk update
+  const handleBulkUpdate = async (updates: { customerIds: string[], updates: any }) => {
+    try {
+      const response = await fetch('/api/customers', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates)
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to update customers');
+      }
+
+      // Refresh the data
+      await refreshContacts();
+    } catch (error) {
+      console.error('Bulk update failed:', error);
+      throw error;
+    }
   };
 
   // Form handler functions
@@ -380,17 +403,18 @@ export default function ContactsPage() {
             <div className="bg-white dark:bg-[#111111] border-[#EAEAEA] dark:border-[#333333] rounded-xl">
               <div>
                 <div className="overflow-x-auto">
-                  <VercelDataTable
+                  <EnhancedDataTable
                     columns={createContactColumns(deleteContact || undefined, handleEditContact)}
                     data={filteredContacts}
                     loading={loading}
                     error={error || undefined}
                     onDeleteContact={deleteContact}
                     onEditContact={handleEditContact}
+                    onBulkUpdate={handleBulkUpdate}
                   />
                 </div>
               </div>
-              
+
             </div>
 
             {/* Quick Stats Summary */}

@@ -98,23 +98,23 @@ export function RealtimeBar({ lastUpdated, onRefresh, isRefreshing = false }: Re
           )}
 
           {/* Auto-refresh indicator */}
-          <Badge variant="secondary" className="text-xs py-0 px-2 h-6">
-            Auto: 30s
+          <Badge variant="outline" className="text-xs py-0 px-2 h-6">
+            Manual
           </Badge>
         </div>
 
         {/* Manual Refresh Button */}
-        <Button 
-          variant="outline" 
+        <Button
+          variant="default"
           size="sm"
           onClick={handleRefresh}
           disabled={isRefreshing || !isOnline}
-          className="gap-1.5 h-7 px-3 text-xs"
+          className="gap-1.5 h-7 px-3 text-xs bg-blue-600 hover:bg-blue-700 text-white"
         >
-          <RefreshCw 
-            className={`h-3 w-3 ${isRefreshing ? 'animate-spin' : ''}`} 
+          <RefreshCw
+            className={`h-3 w-3 ${isRefreshing ? 'animate-spin' : ''}`}
           />
-          {isRefreshing ? 'Refreshing...' : 'Refresh'}
+          {isRefreshing ? 'Refreshing...' : 'Refresh Data'}
         </Button>
       </div>
 

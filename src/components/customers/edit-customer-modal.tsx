@@ -23,6 +23,7 @@ import { Loader2, Trash2 } from "lucide-react"
 import { processPhoneNumber } from "@/lib/utils/phone"
 import { toast } from "sonner"
 import { DeleteCustomerDialog } from "./delete-customer-dialog"
+import { TagInput } from "../contacts/tag-input"
 
 interface Customer {
   id: string
@@ -32,6 +33,7 @@ interface Customer {
   email: string | null
   state: string | null
   status: string
+  tags: string[]
   createdAt: string
   updatedAt: string
 }
@@ -61,7 +63,8 @@ export function EditCustomerModal({ customer, open, onClose, onSuccess }: EditCu
     lastName: customer.lastName || '',
     email: customer.email || '',
     state: customer.state || '',
-    status: customer.status
+    status: customer.status,
+    tags: customer.tags || []
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
 
@@ -73,7 +76,8 @@ export function EditCustomerModal({ customer, open, onClose, onSuccess }: EditCu
       lastName: customer.lastName || '',
       email: customer.email || '',
       state: customer.state || '',
-      status: customer.status
+      status: customer.status,
+      tags: customer.tags || []
     })
     setErrors({})
   }, [customer])
@@ -130,7 +134,8 @@ export function EditCustomerModal({ customer, open, onClose, onSuccess }: EditCu
         lastName: formData.lastName.trim() || null,
         email: formData.email.trim() || null,
         state: formData.state || phoneResult.state || null,
-        status: formData.status
+        status: formData.status,
+        tags: formData.tags
       }
       
       const response = await fetch(`/api/customers/${customer.id}`, {
@@ -257,7 +262,16 @@ export function EditCustomerModal({ customer, open, onClose, onSuccess }: EditCu
                 </SelectContent>
               </Select>
             </div>
-            
+
+            <div className="space-y-2">
+              <Label htmlFor="tags">Tags</Label>
+              <TagInput
+                value={formData.tags}
+                onChange={(tags) => setFormData(prev => ({ ...prev, tags }))}
+                placeholder="Add tags for this customer..."
+              />
+            </div>
+
             <div className="flex justify-between items-center pt-4 border-t">
               <Button 
                 type="button" 

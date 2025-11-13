@@ -47,6 +47,7 @@ export interface Customer {
   email?: string | null;
   state?: string | null;
   status: CustomerStatus;
+  tags: string[];
   created_at: string;
   updated_at: string;
 }
@@ -59,6 +60,7 @@ export interface NewCustomer {
   email?: string;
   state?: string;
   status?: CustomerStatus;
+  tags?: string[];
 }
 
 // Campaigns

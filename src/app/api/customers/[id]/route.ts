@@ -61,7 +61,7 @@ export async function PATCH(
     }
 
     const body = await request.json()
-    const { phone, firstName, lastName, email, state, status } = body
+    const { phone, firstName, lastName, email, state, status, tags } = body
 
     // Process and validate phone number only if provided
     let phoneResult = null
@@ -129,9 +129,24 @@ export async function PATCH(
     // Validate status
     if (status && !['active', 'inactive'].includes(status)) {
       return NextResponse.json(
-        { error: 'Status must be either "active" or "inactive"' }, 
+        { error: 'Status must be either "active" or "inactive"' },
         { status: 400 }
       )
+    }
+
+    // Validate tags
+    let processedTags: string[] = []
+    if (tags !== undefined) {
+      if (!Array.isArray(tags)) {
+        return NextResponse.json(
+          { error: 'Tags must be an array' },
+          { status: 400 }
+        )
+      }
+      // Filter and clean tags
+      processedTags = tags
+        .filter(tag => typeof tag === 'string' && tag.trim().length > 0)
+        .map(tag => tag.trim())
     }
 
     // Update customer
@@ -149,6 +164,11 @@ export async function PATCH(
       updateData.state = state || phoneResult.state || null
     } else if (state) {
       updateData.state = state
+    }
+
+    // Only update tags if provided (or if tags were explicitly set to empty)
+    if (tags !== undefined) {
+      updateData.tags = processedTags
     }
 
     const { data: updatedCustomer, error: updateError } = await supabase

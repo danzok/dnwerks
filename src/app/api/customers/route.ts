@@ -171,7 +171,149 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Error creating customer:', error)
     return NextResponse.json(
-      { error: 'Failed to create customer' }, 
+      { error: 'Failed to create customer' },
+      { status: 500 }
+    )
+  }
+}
+
+// PATCH /api/customers/bulk - Bulk update multiple customers
+export async function PATCH(request: NextRequest) {
+  try {
+    const { userId } = await auth(request)
+
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const body = await request.json()
+    const { customerIds, updates } = body
+
+    // Validate required fields
+    if (!Array.isArray(customerIds) || customerIds.length === 0) {
+      return NextResponse.json(
+        { error: 'Customer IDs array is required' },
+        { status: 400 }
+      )
+    }
+
+    if (!updates || typeof updates !== 'object') {
+      return NextResponse.json(
+        { error: 'Updates object is required' },
+        { status: 400 }
+      )
+    }
+
+    // Validate tags if present in updates
+    let processedTags: string[] = []
+    if (updates.tags !== undefined) {
+      if (!Array.isArray(updates.tags)) {
+        return NextResponse.json(
+          { error: 'Tags must be an array' },
+          { status: 400 }
+        )
+      }
+      // Filter and clean tags
+      processedTags = updates.tags
+        .filter(tag => typeof tag === 'string' && tag.trim().length > 0)
+        .map(tag => tag.trim())
+    }
+
+    // Prepare update data
+    const updateData: any = {
+      updated_at: new Date().toISOString()
+    }
+
+    // Add specific fields from updates
+    if (updates.firstName !== undefined) {
+      updateData.first_name = updates.firstName?.trim() || null
+    }
+
+    if (updates.lastName !== undefined) {
+      updateData.last_name = updates.lastName?.trim() || null
+    }
+
+    if (updates.email !== undefined) {
+      updateData.email = updates.email?.trim() || null
+    }
+
+    if (updates.state !== undefined) {
+      updateData.state = updates.state
+    }
+
+    if (updates.status !== undefined) {
+      if (!['active', 'inactive'].includes(updates.status)) {
+        return NextResponse.json(
+          { error: 'Status must be either "active" or "inactive"' },
+          { status: 400 }
+        )
+      }
+      updateData.status = updates.status
+    }
+
+    if (updates.tags !== undefined) {
+      updateData.tags = processedTags
+    }
+
+    // Check if any update fields were provided
+    if (Object.keys(updateData).length === 1) { // Only updated_at
+      return NextResponse.json(
+        { error: 'No valid update fields provided' },
+        { status: 400 }
+      )
+    }
+
+    // Validate that all customers belong to the user
+    const { data: existingCustomers, error: fetchError } = await supabase
+      .from('customers')
+      .select('id')
+      .eq('user_id', userId)
+      .in('id', customerIds)
+
+    if (fetchError) {
+      console.error('Error fetching customers:', fetchError)
+      return NextResponse.json(
+        { error: 'Error validating customer ownership' },
+        { status: 500 }
+      )
+    }
+
+    const validCustomerIds = existingCustomers?.map(c => c.id) || []
+    const invalidIds = customerIds.filter(id => !validCustomerIds.includes(id))
+
+    if (invalidIds.length > 0) {
+      return NextResponse.json(
+        { error: `Invalid customer IDs: ${invalidIds.join(', ')}` },
+        { status: 404 }
+      )
+    }
+
+    // Perform bulk update
+    const { data: updatedCustomers, error: updateError } = await supabase
+      .from('customers')
+      .update(updateData)
+      .in('id', customerIds)
+      .eq('user_id', userId)
+      .select()
+
+    if (updateError) {
+      console.error('Error updating customers:', updateError)
+      return NextResponse.json(
+        { error: 'Failed to update customers' },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: `Successfully updated ${updatedCustomers?.length || 0} customers`,
+      updatedCustomers
+    })
+
+  } catch (error) {
+    console.error('Error in bulk update:', error)
+    return NextResponse.json(
+      { error: 'Failed to perform bulk update' },
       { status: 500 }
     )
   }

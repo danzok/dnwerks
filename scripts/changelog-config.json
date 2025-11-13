@@ -1,0 +1,71 @@
+{
+  "version": "1.0.0",
+  "project": "DNwerks SMS Campaign Management Platform",
+  "description": "Automated changelog configuration",
+  "settings": {
+    "autoUpdateOnCommit": true,
+    "includeFileCounts": true,
+    "categorizeByFileTypes": true,
+    "smartDescriptionGeneration": true,
+    "trackLastProcessedCommit": true,
+    "followKeepAChangelog": true,
+    "semanticVersioning": true,
+    "includeDateTime": true,
+    "sortByDate": true,
+    "dateFormat": "yyyy-MM-dd HH:mm",
+    "timezone": "local",
+    "alternativeFormats": {
+      "iso": "yyyy-MM-dd'T'HH:mm:ss",
+      "us": "MM/dd/yyyy HH:mm",
+      "eu": "dd/MM/yyyy HH:mm",
+      "compact": "MM/dd HH:mm",
+      "verbose": "EEEE, MMMM d, yyyy 'at' h:mm a"
+    }
+  },
+  "categories": {
+    "feat": "Added",
+    "feature": "Added",
+    "fix": "Fixed",
+    "bugfix": "Fixed",
+    "refactor": "Refactored",
+    "refact": "Refactored",
+    "docs": "Documentation",
+    "documentation": "Documentation",
+    "test": "Testing",
+    "testing": "Testing",
+    "perf": "Performance",
+    "performance": "Performance",
+    "security": "Security",
+    "sec": "Security",
+    "deprecat": "Deprecated",
+    "remove": "Removed",
+    "delete": "Removed",
+    "chore": "Changed",
+    "style": "Changed",
+    "build": "Dependencies",
+    "ci": "Dependencies"
+  },
+  "fileTypeGroups": {
+    "components": ["src/components"],
+    "pages": ["src/app"],
+    "hooks": ["src/hooks"],
+    "utilities": ["src/lib"],
+    "tests": ["test", "spec", "__tests__"],
+    "docs": [".md", "docs/"],
+    "dependencies": ["package.json", "package-lock.json", "yarn.lock"]
+  },
+  "ignoredPatterns": [
+    "*.log",
+    "*.tmp",
+    "node_modules",
+    ".git",
+    "dist",
+    "build",
+    ".next"
+  ],
+  "customDescriptions": {
+    "package.json": "Update project dependencies",
+    "README.md": "Update project documentation",
+    "CHANGELOG.md": "Update changelog documentation"
+  }
+}

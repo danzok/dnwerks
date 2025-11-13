@@ -43,6 +43,7 @@ interface UseContactsRealtimeResult {
   error: string | null;
   lastUpdated: Date | null;
   refreshContacts: () => Promise<void>;
+  manualRefresh: () => Promise<void>;
   deleteContact: (id: string) => Promise<void>;
   updateContact: (id: string, data: Partial<Contact>) => Promise<void>;
   availableTags: string[];
@@ -253,12 +254,17 @@ export function useContactsRealtime(
     fetchContacts(pagination.page);
   }, [pagination.page]);
 
-  // Auto-refresh every 30 seconds
+  // Auto-refresh every 30 seconds (currently disabled)
   useEffect(() => {
+    // Auto-refresh is disabled - comment out the polling timer
+    // To enable auto-refresh, uncomment the following lines:
+    /*
     if (!user) return;
-    
+
     const interval = setInterval(() => fetchContacts(pagination.page), 30000);
     return () => clearInterval(interval);
+    */
+    return () => {}; // Empty cleanup function
   }, [user, fetchContacts, pagination.page]);
 
   // Listen for real-time updates
@@ -284,6 +290,35 @@ export function useContactsRealtime(
     };
   }, [user, fetchContacts]);
 
+  // Manual refresh function that can be called from UI components
+  const manualRefresh = useCallback(async () => {
+    try {
+      // Show loading state
+      setLoading(true);
+      setError(null);
+
+      // Fetch current page data
+      await fetchContacts(pagination.page);
+
+      // Trigger cross-tab sync to update other tabs
+      try {
+        const timestamp = Date.now().toString();
+        localStorage.setItem('contacts_updated', timestamp);
+        window.dispatchEvent(new CustomEvent('contactsUpdated', {
+          detail: { timestamp, source: 'manual_refresh' }
+        }));
+      } catch (syncError) {
+        console.warn('Cross-tab sync failed:', syncError);
+      }
+
+    } catch (error) {
+      console.error('Manual refresh failed:', error);
+      setError('Manual refresh failed');
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchContacts, pagination.page]);
+
   return {
     contacts,
     stats,
@@ -292,6 +327,7 @@ export function useContactsRealtime(
     error,
     lastUpdated,
     refreshContacts: () => fetchContacts(),
+    manualRefresh,
     deleteContact,
     updateContact,
     availableTags,
