@@ -72,18 +72,47 @@ export async function middleware(request: NextRequest) {
 
     // Check user profile for protected routes
     if (protectedRoutes.some(route => request.nextUrl.pathname.startsWith(route))) {
-      const { data: profile, error: profileError } = await supabase
+      let profile, profileError
+
+      // Try to get existing profile
+      const profileResult = await supabase
         .from('user_profiles')
         .select('status, role')
         .eq('user_id', user.id)
         .single()
 
-      // If no profile found, user needs to register properly
+      profile = profileResult.data
+      profileError = profileResult.error
+
+      // If no profile found, create one automatically for authenticated users
       if (profileError || !profile) {
-        const url = request.nextUrl.clone()
-        url.pathname = '/sign-in'
-        url.searchParams.set('error', 'profile_not_found')
-        return NextResponse.redirect(url)
+        console.log('🔍 No profile found for authenticated user, creating automatically:', user.id)
+
+        // Auto-create profile with default values
+        const { data: newProfile, error: createError } = await supabase
+          .from('user_profiles')
+          .insert({
+            user_id: user.id,
+            email: user.email,
+            full_name: user.user_metadata?.full_name || user.user_metadata?.name || 'User',
+            role: 'user',
+            status: 'approved' // Auto-approve for now
+          })
+          .select()
+          .single()
+
+        if (createError) {
+          console.error('Failed to create user profile:', createError)
+          // If we can't create the profile, redirect to a safe page
+          const url = request.nextUrl.clone()
+          url.pathname = '/sign-in'
+          url.searchParams.set('error', 'profile_creation_failed')
+          return NextResponse.redirect(url)
+        }
+
+        console.log('✅ User profile created successfully:', newProfile.id)
+        // Continue with the newly created profile
+        profile = newProfile
       }
 
       // Handle pending approval
