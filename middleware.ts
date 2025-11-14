@@ -77,7 +77,7 @@ export async function middleware(request: NextRequest) {
       // Try to get existing profile
       const profileResult = await supabase
         .from('user_profiles')
-        .select('status, role')
+        .select('role')
         .eq('user_id', user.id)
         .single()
 
@@ -95,8 +95,7 @@ export async function middleware(request: NextRequest) {
             user_id: user.id,
             email: user.email,
             full_name: user.user_metadata?.full_name || user.user_metadata?.name || 'User',
-            role: 'user',
-            status: 'approved' // Auto-approve for now
+            role: 'user'
           })
           .select()
           .single()
@@ -115,40 +114,13 @@ export async function middleware(request: NextRequest) {
         profile = newProfile
       }
 
-      // Handle pending approval
-      if (profile.status === 'pending') {
-        // Allow access to pending approval page
-        if (request.nextUrl.pathname !== '/pending-approval') {
-          const url = request.nextUrl.clone()
-          url.pathname = '/pending-approval'
-          return NextResponse.redirect(url)
-        }
-        return supabaseResponse
-      }
-
-      // Handle rejected users
-      if (profile.status === 'rejected') {
-        const url = request.nextUrl.clone()
-        url.pathname = '/sign-in'
-        url.searchParams.set('error', 'access_denied')
-        return NextResponse.redirect(url)
-      }
-
       // Check admin access for admin routes
       if (adminRoutes.some(route => request.nextUrl.pathname.startsWith(route))) {
-        if (profile.role !== 'admin' || profile.status !== 'approved') {
+        if (profile.role !== 'admin') {
           const url = request.nextUrl.clone()
           url.pathname = '/dashboard'
           return NextResponse.redirect(url)
         }
-      }
-
-      // Only approved users can access main dashboard
-      if (profile.status !== 'approved' && request.nextUrl.pathname.startsWith('/dashboard') &&
-          !request.nextUrl.pathname.includes('/pending-approval')) {
-        const url = request.nextUrl.clone()
-        url.pathname = '/pending-approval'
-        return NextResponse.redirect(url)
       }
     }
   }
