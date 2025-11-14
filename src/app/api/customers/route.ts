@@ -29,11 +29,31 @@ export async function GET(request: NextRequest) {
     // Parse tags from comma-separated string
     const tags = tagsParam ? tagsParam.split(',').filter(Boolean) : []
 
-    // Build optimized query with better selectivity
+    // First, get the user's profile to find the profile ID
+    // customers.user_id might reference user_profiles.id, not auth.uid()
+    const { data: userProfile, error: profileError } = await supabase
+      .from('user_profiles')
+      .select('id')
+      .eq('user_id', userId)
+      .single()
+    
+    if (profileError) {
+      console.warn('🔍 [API] Could not find user profile, will try direct user_id match:', profileError.message)
+    }
+
+    // Build query - try matching against profile.id OR auth.uid() directly
+    // This handles both cases: user_id references user_profiles.id OR user_id is auth.uid()
+    const profileId = userProfile?.id
     let query = supabase
       .from('customers')
       .select('*', { count: 'exact' })
-      .eq('user_id', userId)
+    
+    // Try multiple user_id formats to handle different schema setups
+    if (profileId) {
+      query = query.or(`user_id.eq.${profileId},user_id.eq.${userId},auth_user_id.eq.${userId}`)
+    } else {
+      query = query.or(`user_id.eq.${userId},auth_user_id.eq.${userId}`)
+    }
 
     // Apply search filter with better index usage
     if (search) {
@@ -63,16 +83,29 @@ export async function GET(request: NextRequest) {
       .range(offset, offset + limit - 1)
 
     if (error) {
-      console.error('Database query error:', error)
-      throw new Error(error.message || 'Database query failed')
+      console.error('🔍 [API] Database query error:', error)
+      return NextResponse.json(
+        { error: 'Failed to fetch customers', details: error.message },
+        { status: 500 }
+      )
     }
 
+    console.log('🔍 [API] Found customers:', customers?.length || 0, 'total:', count, 'profileId:', userProfile?.id)
+
     // Get all available tags from user's customers (separate query for reliability)
-    const { data: allCustomerTags } = await supabase
+    const profileId = userProfile?.id
+    let tagsQuery = supabase
       .from('customers')
       .select('tags')
-      .eq('user_id', userId)
       .not('tags', 'is', null)
+    
+    if (profileId) {
+      tagsQuery = tagsQuery.or(`user_id.eq.${profileId},user_id.eq.${userId},auth_user_id.eq.${userId}`)
+    } else {
+      tagsQuery = tagsQuery.or(`user_id.eq.${userId},auth_user_id.eq.${userId}`)
+    }
+    
+    const { data: allCustomerTags } = await tagsQuery
 
     // Extract and deduplicate all tags efficiently
     const allTags = [...new Set(
