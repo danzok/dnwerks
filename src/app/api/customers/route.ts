@@ -49,10 +49,12 @@ export async function GET(request: NextRequest) {
       .select('*', { count: 'exact' })
     
     // Try multiple user_id formats to handle different schema setups
+    // If profile exists, try both profile.id and auth.uid()
+    // If no profile, just try auth.uid()
     if (profileId) {
-      query = query.or(`user_id.eq.${profileId},user_id.eq.${userId},auth_user_id.eq.${userId}`)
+      query = query.or(`user_id.eq.${profileId},user_id.eq.${userId}`)
     } else {
-      query = query.or(`user_id.eq.${userId},auth_user_id.eq.${userId}`)
+      query = query.eq('user_id', userId)
     }
 
     // Apply search filter with better index usage
@@ -100,9 +102,9 @@ export async function GET(request: NextRequest) {
       .not('tags', 'is', null)
     
     if (profileId) {
-      tagsQuery = tagsQuery.or(`user_id.eq.${profileId},user_id.eq.${userId},auth_user_id.eq.${userId}`)
+      tagsQuery = tagsQuery.or(`user_id.eq.${profileId},user_id.eq.${userId}`)
     } else {
-      tagsQuery = tagsQuery.or(`user_id.eq.${userId},auth_user_id.eq.${userId}`)
+      tagsQuery = tagsQuery.eq('user_id', userId)
     }
     
     const { data: allCustomerTags } = await tagsQuery
