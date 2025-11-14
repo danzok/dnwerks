@@ -1,0 +1,32 @@
+{
+  "name": "DNwerks Prompt System",
+  "version": "1.0.0",
+  "description": "SQL and code templates for DNwerks SMS campaign management",
+  "categories": {
+    "database": {
+      "name": "Database & SQL Patterns",
+      "description": "PostgreSQL queries, schemas, and optimization patterns",
+      "prompts": [
+        "postgres-queries.md",
+        "schema-design.md",
+        "migrations.md",
+        "optimization.md"
+      ]
+    },
+    "templates": {
+      "name": "Code Templates",
+      "description": "React, Next.js, and TypeScript code templates",
+      "prompts": [
+        "api-routes.md",
+        "react-components.md",
+        "nextjs-pages.md",
+        "typescript-types.md"
+      ]
+    }
+  },
+  "cli": {
+    "defaultCategory": "database",
+    "copyToClipboard": true,
+    "showLineNumbers": false
+  }
+}

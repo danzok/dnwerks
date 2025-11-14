@@ -18,8 +18,22 @@
     "context7:docs": "echo 'Accessing Context7 documentation...' && echo 'Use MCP server for real-time documentation'",
     "type-check": "tsc --noEmit",
     "prepare": "echo 'Skipping validation for deployment'",
+    "changelog:update": "tsx scripts/update-changelog.ts",
+    "changelog:daily": "tsx scripts/update-changelog.ts --daily",
+    "changelog:weekly": "tsx scripts/update-changelog.ts --weekly",
+    "changelog:test-daily": "tsx scripts/update-changelog.ts --test-daily",
+    "changelog:format-test": "tsx scripts/update-changelog.ts --format-test",
+    "changelog:help": "tsx scripts/update-changelog.ts --help",
+    "changelog:setup": "bash scripts/setup-git-hooks.sh",
+    "changelog:setup-windows": "scripts\\setup-git-hooks.bat",
+    "precommit": "npm run changelog:update && git add CHANGELOG.md",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "build-storybook": "storybook build",
+    "prompts": "node prompts/utils/prompt-cli.js",
+    "prompts:db": "node prompts/utils/prompt-cli.js database",
+    "prompts:templates": "node prompts/utils/prompt-cli.js templates",
+    "prompts:search": "node prompts/utils/prompt-cli.js search",
+    "prompts:list": "node prompts/utils/prompt-cli.js list"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

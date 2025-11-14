@@ -27,6 +27,7 @@
 - [🔧 Development Workflow](#-development-workflow)
 - [🚀 Deployment](#-deployment)
 - [📚 API Integration](#-api-integration)
+- [📋 Changelog](#-changelog)
 - [🤝 Contributing](#-contributing)
 - [📄 License](#-license)
 
@@ -243,8 +244,91 @@ npm run lint         # Run ESLint
 npm run type-check   # Run TypeScript type checking
 npm run format       # Format code with Prettier
 
+# Prompt Management System
+npm run prompts              # Interactive prompt browser
+npm run prompts:db           # Browse database & SQL prompts
+npm run prompts:templates    # Browse code templates
+npm run prompts:search       # Search prompt content
+npm run prompts:list         # List all available prompts
+
 # Context7
 npm run context7:validate  # Validate code standards
+```
+
+### Prompt Management System
+
+The DNwerks project includes a comprehensive prompt management system with SQL patterns and code templates to accelerate development:
+
+#### 📁 Available Categories
+
+**Database & SQL Patterns**
+- PostgreSQL query patterns for campaigns, customers, and analytics
+- Schema design templates with proper constraints and indexing
+- Database migration patterns with rollback strategies
+- Performance optimization queries and monitoring
+
+**Code Templates**
+- Next.js API route templates with proper error handling
+- React component templates with TypeScript
+- Page templates for common CRUD operations
+- TypeScript type definitions for the entire application
+
+#### 🚀 Usage Examples
+
+```bash
+# Browse all prompts interactively
+npm run prompts
+
+# Quick access to database patterns
+npm run prompts:db
+
+# Search for specific patterns
+npm run prompts:search "optimization"
+
+# List all available prompts
+npm run prompts:list
+```
+
+#### 💡 Key Features
+
+- **Interactive CLI**: User-friendly command-line interface with colored output
+- **Search Functionality**: Find specific patterns across all prompt files
+- **Line Numbers**: Reference lines easily when copying code
+- **Categorized Organization**: Logical grouping by technology and use case
+- **Ready-to-use Code**: Copy-paste functional patterns into your project
+
+#### 📝 Example Prompts
+
+**Database Query Example:**
+```sql
+-- Get comprehensive campaign statistics
+SELECT
+    c.name,
+    COUNT(cm.id) as total_messages,
+    COUNT(CASE WHEN cm.status = 'delivered' THEN 1 END) as delivered_count,
+    ROUND(COUNT(CASE WHEN cm.status = 'delivered' THEN 1 END) * 100.0 /
+          NULLIF(COUNT(cm.id), 0), 2) as delivery_rate
+FROM campaigns c
+LEFT JOIN campaign_messages cm ON c.id = cm.campaign_id
+GROUP BY c.id, c.name;
+```
+
+**Component Template Example:**
+```typescript
+// Functional component with TypeScript
+interface CampaignCardProps {
+  campaign: Campaign;
+  onEdit?: (campaign: Campaign) => void;
+  onDelete?: (campaignId: string) => void;
+}
+
+export const CampaignCard: React.FC<CampaignCardProps> = ({
+  campaign,
+  onEdit,
+  onDelete
+}) => {
+  // Component implementation
+};
 ```
 
 ### Code Style Guidelines
@@ -352,6 +436,22 @@ The app uses Supabase Realtime for:
 - Live campaign status updates
 - Real-time message delivery tracking
 - Instant notification updates
+
+## 📋 Changelog
+
+For a detailed history of changes, bug fixes, and new features, please see our [CHANGELOG.md](CHANGELOG.md).
+
+### Recent Releases
+- **v0.1.0** (2025-01-15) - Production Ready Release with advanced contact management, real-time analytics, and comprehensive UI overhaul
+- **v0.0.1** (2024-12-01) - Initial MVP with core SMS campaign functionality
+
+### Key Changes in v0.1.0
+- ✨ Advanced tag filtering and pagination for contact management
+- 🏗️ Complete codebase cleanup with 40% code reduction
+- 🎨 Compact design system with professional UI/UX
+- ⚡ Real-time analytics dashboard replacing dummy data
+- 🔧 Enhanced campaign builder with productivity shortcuts
+- 📦 Next.js 16 upgrade with full TypeScript coverage
 
 ## 🤝 Contributing
 

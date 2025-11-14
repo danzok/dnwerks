@@ -22,10 +22,11 @@ export async function auth(request?: NextRequest) {
       
       if (mockAuthHeader === 'development') {
         const mockUser = {
-          id: '7a361a20-86e3-41da-a7d1-1ba13d8b9f2c',
-          email: 'admin@dnwerks.com',
+          id: '6a06617b-deee-4f02-a08a-bdec17e46d98',
+          email: 'danisbermainaja@gmail.com',
           user_metadata: {
-            name: 'Admin User'
+            name: 'Danis Bermain',
+            full_name: 'Danis Bermain'
           }
         }
 
@@ -98,10 +99,11 @@ export async function auth(request?: NextRequest) {
         console.log('🔍 [AUTH DEBUG] No user found, checking development fallback...')
         console.warn('No authentication token found in development, using mock user')
         const mockUser = {
-          id: '7a361a20-86e3-41da-a7d1-1ba13d8b9f2c',
-          email: 'admin@dnwerks.com',
+          id: '6a06617b-deee-4f02-a08a-bdec17e46d98',
+          email: 'danisbermainaja@gmail.com',
           user_metadata: {
-            name: 'Admin User'
+            name: 'Danis Bermain',
+            full_name: 'Danis Bermain'
           }
         }
 

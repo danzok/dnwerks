@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { ClientSafeSidebar } from "@/components/client-safe-sidebar"
 import { SiteHeader } from "@/components/site-header"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
@@ -9,8 +9,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { VercelDataTable, createContactColumns } from "@/components/contacts/vercel-data-table";
 import { EnhancedDataTable } from "@/components/contacts/enhanced-data-table";
+import { createEnhancedContactColumns } from "@/components/contacts/enhanced-contact-columns";
 import { ContactsStats } from "@/components/contacts/contacts-stats";
 import { RealtimeBar } from "@/components/contacts/realtime-bar";
 import { ContactsByStateChart } from "@/components/contacts/contacts-by-state-chart";
@@ -29,6 +29,7 @@ import {
   DialogFooter
 } from '@/components/ui/dialog';
 import { toast } from "sonner";
+import { createClient } from "@/lib/supabase/client";
 import { processPhoneNumber } from "@/lib/utils/phone";
 
 // US States constant
@@ -90,7 +91,10 @@ export default function ContactsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedState, setSelectedState] = useState("all");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  
+
+  // Initialize Supabase client once
+  const supabase = useMemo(() => createClient(), []);
+
   // Contact form state
   const [showContactForm, setShowContactForm] = useState(false);
   const [editingContact, setEditingContact] = useState<any>(null);
@@ -125,6 +129,7 @@ export default function ContactsPage() {
     setPage
   } = useContactsRealtime(searchQuery, selectedState, selectedTags);
 
+  
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
       case 'active':
@@ -164,27 +169,202 @@ export default function ContactsPage() {
     setShowContactForm(true);
   };
 
-  // Handle bulk update
-  const handleBulkUpdate = async (updates: { customerIds: string[], updates: any }) => {
+  // ENVIRONMENT-AWARE: Development uses API routes, Production uses direct Supabase
+  const handleBulkUpdate = useCallback(async ({
+    customerIds,
+    updates
+  }: {
+    customerIds: string[],
+    updates: any
+  }) => {
     try {
-      const response = await fetch('/api/customers', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updates)
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to update customers');
+      // Validate input
+      if (!customerIds || customerIds.length === 0) {
+        toast.error('No customers selected')
+        return
       }
 
-      // Refresh the data
-      await refreshContacts();
-    } catch (error) {
-      console.error('Bulk update failed:', error);
-      throw error;
+      if (!updates || Object.keys(updates).length === 0) {
+        toast.error('No updates provided')
+        return
+      }
+
+      // Show loading toast
+      const loadingToast = toast.loading(
+        `Updating ${customerIds.length} customer${customerIds.length > 1 ? 's' : ''}...`
+      )
+
+      const isDevelopment = process.env.NODE_ENV === 'development'
+
+      if (isDevelopment) {
+        // DEVELOPMENT: Use existing API routes (work with mock data)
+        try {
+          const response = await fetch('/api/customers', {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-mock-auth': 'development' // Mock auth header for development
+            },
+            body: JSON.stringify({
+              customerIds,
+              updates
+            })
+          })
+
+          if (!response.ok) {
+            // Handle non-JSON error responses
+            let errorData = { error: `API error: ${response.status}` }
+            try {
+              const responseText = await response.text()
+              if (responseText) {
+                try {
+                  errorData = JSON.parse(responseText)
+                } catch {
+                  // If response is not JSON, use the text as error message
+                  errorData = { error: responseText || `API error: ${response.status}` }
+                }
+              }
+            } catch (textError) {
+              // If even text() fails, use status code
+              errorData = { error: `API error: ${response.status}` }
+            }
+            throw new Error(errorData.error || `API error: ${response.status}`)
+          }
+
+          // Handle successful response (may or may not be JSON)
+          let result = { updated: customerIds.length }
+          try {
+            const responseText = await response.text()
+            if (responseText) {
+              try {
+                result = JSON.parse(responseText)
+              } catch {
+                // If response is not JSON, assume success with all IDs
+                console.warn('Non-JSON response from bulk API, assuming success:', responseText)
+                result = { updated: customerIds.length }
+              }
+            }
+          } catch (textError) {
+            console.warn('Could not read response text, assuming success:', textError)
+            result = { updated: customerIds.length }
+          }
+
+          toast.dismiss(loadingToast)
+          toast.success(`Successfully updated ${result.updated || customerIds.length} customer${customerIds.length > 1 ? 's' : ''}`)
+
+        } catch (apiError) {
+          toast.dismiss(loadingToast)
+          console.error('Development API bulk update error:', apiError)
+          toast.error(`Failed to update customers: ${apiError instanceof Error ? apiError.message : 'Unknown error'}`)
+          return
+        }
+
+      } else {
+        // PRODUCTION: Use direct Supabase operations (optimal performance)
+
+        // Get authenticated user
+        const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+        if (authError || !user) {
+          toast.dismiss(loadingToast)
+          toast.error('Please login to update customers')
+          return
+        }
+
+        // Prepare update data (map field names correctly)
+        const updateData: any = {
+          updated_at: new Date().toISOString()
+        }
+
+        // Map updates to correct database column names
+        if (updates.status !== undefined) {
+          updateData.status = updates.status
+        }
+
+        if (updates.tags !== undefined) {
+          updateData.tags = Array.isArray(updates.tags) ? updates.tags : []
+        }
+
+        if (updates.firstName !== undefined) {
+          updateData.first_name = updates.firstName
+        }
+
+        if (updates.lastName !== undefined) {
+          updateData.last_name = updates.lastName
+        }
+
+        if (updates.email !== undefined) {
+          updateData.email = updates.email
+        }
+
+        if (updates.state !== undefined) {
+          updateData.state = updates.state
+        }
+
+        // Direct Supabase Update (respects RLS automatically)
+        const { data, error: updateError } = await supabase
+          .from('customers')
+          .update(updateData)
+          .in('id', customerIds)
+          // Note: RLS policy will automatically enforce user_id filtering
+          .select()
+
+        if (updateError) {
+          toast.dismiss(loadingToast)
+          console.error('Bulk update error:', updateError)
+
+          // Handle specific error codes
+          if (updateError.code === '42501') {
+            toast.error('Permission denied. You can only update your own customers.')
+            return
+          }
+
+          toast.error(updateError.message || 'Failed to update customers')
+          throw updateError
+        }
+
+        // Check if any rows were updated
+        if (!data || data.length === 0) {
+          toast.dismiss(loadingToast)
+          toast.warning('No customers were updated. They may not belong to you.')
+          return
+        }
+
+        // Verify all requested IDs were updated
+        if (data.length < customerIds.length) {
+          toast.dismiss(loadingToast)
+          toast.warning(
+            `Only ${data.length} of ${customerIds.length} customers were updated. ` +
+            `${customerIds.length - data.length} customers were not found or don't belong to you.`
+          )
+        } else {
+          toast.dismiss(loadingToast)
+          toast.success(`Successfully updated ${data.length} customer${data.length > 1 ? 's' : ''}`)
+        }
+      }
+
+      // Refresh data to show changes (common for both environments)
+      await refreshContacts()
+
+      // Trigger storage event for cross-tab sync
+      try {
+        localStorage.setItem('contacts_updated', Date.now().toString())
+        window.dispatchEvent(new StorageEvent('storage', {
+          key: 'contacts_updated',
+          newValue: Date.now().toString()
+        }))
+      } catch (syncError) {
+        console.warn('Cross-tab sync failed:', syncError)
+      }
+
+      return { success: true, count: customerIds.length }
+
+    } catch (error: any) {
+      console.error('Bulk update failed:', error)
+      toast.error(error.message || 'Failed to update customers')
+      throw error
     }
-  };
+  }, [refreshContacts, supabase])
 
   // Form handler functions
   const resetForm = () => {
@@ -268,9 +448,16 @@ export default function ContactsPage() {
         toast.success('Contact updated successfully!');
       } else {
         // Create new contact
+        const createHeaders: Record<string, string> = {
+          'Content-Type': 'application/json'
+        };
+        if (process.env.NODE_ENV === 'development') {
+          createHeaders['x-mock-auth'] = 'development';
+        }
+
         const response = await fetch('/api/customers', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: createHeaders,
           body: JSON.stringify(contactData)
         });
         
@@ -406,7 +593,7 @@ export default function ContactsPage() {
               <div>
                 <div className="overflow-x-auto">
                   <EnhancedDataTable
-                    columns={createContactColumns(deleteContact || undefined, handleEditContact)}
+                    columns={createEnhancedContactColumns(deleteContact || undefined, handleEditContact)}
                     data={filteredContacts}
                     loading={loading}
                     error={error || undefined}
@@ -416,6 +603,21 @@ export default function ContactsPage() {
                   />
                 </div>
               </div>
+
+              {/* Pagination */}
+              {pagination.total > pagination.limit && (
+                <div className="border-t border-[#EAEAEA] dark:border-[#333333] p-4">
+                  <Pagination
+                    currentPage={pagination.page}
+                    totalPages={pagination.totalPages}
+                    onPageChange={setPage}
+                    hasNext={pagination.hasNext}
+                    hasPrev={pagination.hasPrev}
+                    total={pagination.total}
+                    limit={pagination.limit}
+                  />
+                </div>
+              )}
 
             </div>
 

@@ -64,7 +64,7 @@ export function useContactsRealtime(
   const { user } = useUser();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [availableTags, setAvailableTags] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [pagination, setPagination] = useState({
@@ -94,14 +94,72 @@ export function useContactsRealtime(
     notes: customer.notes || ''
   }), []);
 
-  // Fetch contacts from API with optimized dependencies
-  const fetchContacts = useCallback(async (page: number = pagination.page, forceRefresh: boolean = false) => {
-    if (!user) return;
-
-    // Skip if already loading and not forcing refresh
-    if (loading && !forceRefresh) return;
+  // Fetch all available tags from dedicated endpoint
+  const fetchAvailableTags = useCallback(async () => {
+    if (!user) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔗 [CONTACTS] fetchAvailableTags: No user, skipping');
+      }
+      return;
+    }
 
     try {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔗 [CONTACTS] fetchAvailableTags: Fetching tags...');
+      }
+
+      const response = await fetch('/api/customers/tags?includeStats=true', {
+        headers: getAuthHeaders()
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('🔗 [CONTACTS] fetchAvailableTags: API error:', response.status, errorText);
+        throw new Error(`Failed to fetch available tags: ${response.status}`);
+      }
+
+      const result = await response.json();
+      const tagNames = result.tags?.map((tag: any) => tag.name) || [];
+
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔗 [CONTACTS] fetchAvailableTags: Got tags:', tagNames.length, 'tags');
+      }
+
+      setAvailableTags(tagNames.sort());
+    } catch (err) {
+      console.error('🔗 [CONTACTS] fetchAvailableTags: Error:', err);
+      // Don't set error state for tags, just log it to avoid breaking the UI
+    }
+  }, [user]);
+
+  // Fetch contacts from API with optimized dependencies
+  const fetchContacts = useCallback(async (page: number = pagination.page, forceRefresh: boolean = false) => {
+    if (!user) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔗 [CONTACTS] fetchContacts: No user, skipping');
+      }
+      return;
+    }
+
+    // Skip if already loading and not forcing refresh
+    if (loading && !forceRefresh) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔗 [CONTACTS] fetchContacts: Already loading, skipping');
+      }
+      return;
+    }
+
+    try {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔗 [CONTACTS] fetchContacts: Starting fetch...', {
+          page,
+          searchQuery,
+          selectedState,
+          selectedTags,
+          forceRefresh
+        });
+      }
+
       setLoading(true);
 
       // Build query string
@@ -112,29 +170,56 @@ export function useContactsRealtime(
       params.append('page', page.toString());
       params.append('limit', pagination.limit.toString());
 
-      const response = await fetch(`/api/customers?${params}`, {
+      const url = `/api/customers?${params}`;
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔗 [CONTACTS] fetchContacts: Requesting:', url);
+      }
+
+      const response = await fetch(url, {
         headers: getAuthHeaders()
       });
 
       if (!response.ok) {
-        throw new Error('Failed to fetch contacts');
+        const errorText = await response.text();
+        console.error('🔗 [CONTACTS] fetchContacts: API error:', response.status, errorText);
+        throw new Error(`Failed to fetch contacts: ${response.status} ${errorText}`);
       }
 
       const result = await response.json();
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔗 [CONTACTS] fetchContacts: Got response:', {
+          dataCount: result.data?.length,
+          pagination: result.pagination,
+          tagsCount: result.tags?.length
+        });
+      }
+
       const transformedContacts = result.data.map(transformContact);
 
       setContacts(transformedContacts);
-      setAvailableTags(result.tags || []);
       setPagination(prev => ({ ...prev, ...result.pagination }));
+
+      // Update tags from API response (fallback if dedicated endpoint fails)
+      if (result.tags && result.tags.length > 0) {
+        setAvailableTags(result.tags.sort());
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔗 [CONTACTS] fetchContacts: Updated tags from API:', result.tags.length);
+        }
+      }
+
       setError(null);
       setLastUpdated(new Date());
+
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔗 [CONTACTS] fetchContacts: Success!');
+      }
     } catch (err) {
-      console.error('Error fetching contacts:', err);
-      setError('Failed to load contacts');
+      console.error('🔗 [CONTACTS] fetchContacts: Error:', err);
+      setError(`Failed to load contacts: ${err instanceof Error ? err.message : 'Unknown error'}`);
     } finally {
       setLoading(false);
     }
-  }, [user, searchQuery, selectedState, selectedTags, pagination.limit]); // Removed pagination.page from deps
+  }, [user, searchQuery, selectedState, selectedTags, pagination.limit, transformContact]);
 
   // Delete contact
   const deleteContact = useCallback(async (contactId: string) => {
@@ -151,7 +236,10 @@ export function useContactsRealtime(
       // Remove from local state immediately
       setContacts(prev => prev.filter(contact => contact.id !== contactId));
       setLastUpdated(new Date());
-      
+
+      // Refresh available tags after deletion
+      setTimeout(() => fetchAvailableTags(), 100);
+
       // Trigger storage event for cross-tab sync
       window.dispatchEvent(new StorageEvent('storage', {
         key: 'contacts_updated',
@@ -162,7 +250,7 @@ export function useContactsRealtime(
       console.error('Error deleting contact:', error);
       throw error;
     }
-  }, []);
+  }, [fetchAvailableTags]);
 
   // Update contact
   const updateContact = useCallback(async (contactId: string, data: Partial<Contact>) => {
@@ -201,13 +289,18 @@ export function useContactsRealtime(
         contact.id === contactId ? transformedContact : contact
       ));
       setLastUpdated(new Date());
-      
+
+      // Refresh available tags after update if tags were changed
+      if (data.tags) {
+        setTimeout(() => fetchAvailableTags(), 100);
+      }
+
       // Trigger storage event for cross-tab sync
       window.dispatchEvent(new StorageEvent('storage', {
         key: 'contacts_updated',
         newValue: Date.now().toString()
       }));
-      
+
       // Also trigger a custom event for immediate UI update
       window.dispatchEvent(new CustomEvent('contactsUpdated', {
         detail: { contact: transformedContact }
@@ -217,7 +310,7 @@ export function useContactsRealtime(
       console.error('Error updating contact:', error);
       throw error;
     }
-  }, [transformContact]);
+  }, [transformContact, fetchAvailableTags]);
 
   // Set page function
   const setPage = useCallback((page: number) => {
@@ -257,12 +350,15 @@ export function useContactsRealtime(
         clearTimeout(debounceRef.current);
       }
     };
-  }, [searchQuery, selectedState, selectedTags]); // Fetch when filters change
+  }, [searchQuery, selectedState, selectedTags, fetchContacts]); // Include fetchContacts in deps
 
   // Initial fetch and page changes
   useEffect(() => {
-    fetchContacts(pagination.page);
-  }, [pagination.page]);
+    if (user) {
+      fetchContacts(pagination.page);
+      fetchAvailableTags(); // Fetch tags separately
+    }
+  }, [pagination.page, user, fetchContacts, fetchAvailableTags]);
 
   // Auto-refresh every 30 seconds (currently disabled)
   useEffect(() => {
@@ -271,11 +367,14 @@ export function useContactsRealtime(
     /*
     if (!user) return;
 
-    const interval = setInterval(() => fetchContacts(pagination.page), 30000);
+    const interval = setInterval(() => {
+      fetchContacts(pagination.page);
+      fetchAvailableTags();
+    }, 30000);
     return () => clearInterval(interval);
     */
     return () => {}; // Empty cleanup function
-  }, [user, fetchContacts, pagination.page]);
+  }, [user, fetchContacts, pagination.page, fetchAvailableTags]);
 
   // Listen for real-time updates
   useEffect(() => {
@@ -284,11 +383,13 @@ export function useContactsRealtime(
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'contacts_updated' || e.key === 'customers_updated') {
         fetchContacts();
+        fetchAvailableTags();
       }
     };
 
     const handleCustomUpdate = () => {
       fetchContacts();
+      fetchAvailableTags();
     };
 
     window.addEventListener('storage', handleStorageChange);
@@ -298,7 +399,7 @@ export function useContactsRealtime(
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('contactsUpdated', handleCustomUpdate);
     };
-  }, [user, fetchContacts]);
+  }, [user, fetchContacts, fetchAvailableTags]);
 
   // Manual refresh function that can be called from UI components
   const manualRefresh = useCallback(async () => {
@@ -307,8 +408,11 @@ export function useContactsRealtime(
       setLoading(true);
       setError(null);
 
-      // Fetch current page data
-      await fetchContacts(pagination.page);
+      // Fetch current page data and tags
+      await Promise.all([
+        fetchContacts(pagination.page),
+        fetchAvailableTags()
+      ]);
 
       // Trigger cross-tab sync to update other tabs
       try {
@@ -327,7 +431,14 @@ export function useContactsRealtime(
     } finally {
       setLoading(false);
     }
-  }, [fetchContacts, pagination.page]);
+  }, [fetchContacts, fetchAvailableTags, pagination.page]);
+
+  const refreshContacts = useCallback(async () => {
+    await Promise.all([
+      fetchContacts(),
+      fetchAvailableTags()
+    ]);
+  }, [fetchContacts, fetchAvailableTags]);
 
   return {
     contacts,
@@ -336,7 +447,7 @@ export function useContactsRealtime(
     loading,
     error,
     lastUpdated,
-    refreshContacts: () => fetchContacts(),
+    refreshContacts,
     manualRefresh,
     deleteContact,
     updateContact,

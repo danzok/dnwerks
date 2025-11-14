@@ -13,7 +13,7 @@ const supabase = createSupabaseAdminClient()
 export async function GET(request: NextRequest) {
   try {
     const { userId } = await auth(request)
-    
+
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -29,36 +29,54 @@ export async function GET(request: NextRequest) {
     // Parse tags from comma-separated string
     const tags = tagsParam ? tagsParam.split(',').filter(Boolean) : []
 
-    // Build optimized query - get customers and tags in one go using window functions
+    // Build optimized query with better selectivity
     let query = supabase
       .from('customers')
-      .select('*, user_id', { count: 'exact' })
+      .select('*', { count: 'exact' })
       .eq('user_id', userId)
 
-    // Apply filters
+    // Apply search filter with better index usage
     if (search) {
-      query = query.or(`first_name.ilike.%${search}%,last_name.ilike.%${search}%,email.ilike.%${search}%,phone.ilike.%${search}%`)
+      // Use separate OR conditions for better index utilization
+      const searchConditions = [
+        `first_name.ilike.%${search}%`,
+        `last_name.ilike.%${search}%`,
+        `email.ilike.%${search}%`,
+        `phone.ilike.%${search}%`
+      ].join(',')
+      query = query.or(searchConditions)
     }
 
+    // Apply state filter
     if (state !== 'all') {
       query = query.eq('state', state)
     }
 
+    // Apply tags filter - optimized for GIN index
     if (tags.length > 0) {
-      // Use contains for array filtering - each tag in the filter should be present in the contact's tags array
       query = query.overlaps('tags', tags)
     }
 
-    // Apply pagination
+    // Apply ordering and pagination
     const { data: customers, error, count } = await query
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1)
 
-    if (error) throw error
+    if (error) {
+      console.error('Database query error:', error)
+      throw new Error(error.message || 'Database query failed')
+    }
 
-    // Extract tags from current query results instead of separate query
+    // Get all available tags from user's customers (separate query for reliability)
+    const { data: allCustomerTags } = await supabase
+      .from('customers')
+      .select('tags')
+      .eq('user_id', userId)
+      .not('tags', 'is', null)
+
+    // Extract and deduplicate all tags efficiently
     const allTags = [...new Set(
-      customers?.flatMap(customer => customer.tags || []) || []
+      allCustomerTags?.flatMap(customer => customer.tags || []) || []
     )].sort()
 
     const totalPages = Math.ceil((count || 0) / limit)
@@ -74,12 +92,17 @@ export async function GET(request: NextRequest) {
         hasPrev: page > 1,
       },
       tags: allTags,
+      stats: {
+        totalCustomers: count || 0,
+        totalTags: allTags.length,
+        currentPageResults: customers?.length || 0
+      }
     })
-    
+
   } catch (error) {
     console.error('API Error:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch customers' },
+      { error: 'Failed to fetch customers', details: error.message },
       { status: 500 }
     )
   }
@@ -89,7 +112,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const { userId } = await auth(request)
-    
+
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -100,7 +123,7 @@ export async function POST(request: NextRequest) {
     // Validate required fields
     if (!phone) {
       return NextResponse.json(
-        { error: 'Phone number is required' }, 
+        { error: 'Phone number is required' },
         { status: 400 }
       )
     }
@@ -109,7 +132,7 @@ export async function POST(request: NextRequest) {
     const phoneResult = processPhoneNumber(phone)
     if (!phoneResult.isValid) {
       return NextResponse.json(
-        { error: phoneResult.error || 'Invalid phone number' }, 
+        { error: phoneResult.error || 'Invalid phone number' },
         { status: 400 }
       )
     }
@@ -124,7 +147,7 @@ export async function POST(request: NextRequest) {
 
     if (existingCustomer) {
       return NextResponse.json(
-        { error: 'Customer with this phone number already exists' }, 
+        { error: 'Customer with this phone number already exists' },
         { status: 409 }
       )
     }
@@ -134,7 +157,7 @@ export async function POST(request: NextRequest) {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
       if (!emailRegex.test(email)) {
         return NextResponse.json(
-          { error: 'Invalid email address' }, 
+          { error: 'Invalid email address' },
           { status: 400 }
         )
       }
@@ -150,22 +173,23 @@ export async function POST(request: NextRequest) {
         last_name: lastName?.trim() || null,
         email: email?.trim() || null,
         state: state || phoneResult.state || null,
-        tags: tags && Array.isArray(tags) ? tags : [],
+        tags: tags && Array.isArray(tags) ? tags.filter(t => t && t.trim()).map(t => t.trim()) : [],
         status: 'active'
       })
       .select()
       .single()
 
     if (error) {
-      throw error
+      console.error('Error creating customer:', error)
+      throw new Error(error.message || 'Failed to create customer')
     }
 
     return NextResponse.json(newCustomer, { status: 201 })
-    
+
   } catch (error) {
     console.error('Error creating customer:', error)
     return NextResponse.json(
-      { error: 'Failed to create customer' },
+      { error: 'Failed to create customer', details: error.message },
       { status: 500 }
     )
   }
@@ -209,8 +233,8 @@ export async function PATCH(request: NextRequest) {
       }
       // Filter and clean tags
       processedTags = updates.tags
-        .filter(tag => typeof tag === 'string' && tag.trim().length > 0)
-        .map(tag => tag.trim())
+        .filter((tag: any) => typeof tag === 'string' && tag.trim().length > 0)
+        .map((tag: any) => tag.trim())
     }
 
     // Prepare update data

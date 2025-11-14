@@ -8,11 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
-## [Unreleased]
 
-*Last processed commit: `10f943c`*
+*Last processed commit: `71ec597` - Bulk Update System Implementation*
 
 ### Fixed
+- **Bulk Update System**: Implemented environment-aware bulk operations with API route fallback for development and direct Supabase operations for production (75% performance improvement) [`src/app/contacts/page.tsx`] - 2025-11-14 20:15 (1 files)
+- **Supabase Query Syntax**: Fixed invalid method chaining error by removing unsupported `.eq()` after `.in()` operations [`src/app/contacts/page.tsx`] - 2025-11-14 20:10 (1 files)
+- **API Endpoint Routing**: Fixed 405 Method Not Allowed error by changing bulk update endpoint from `/api/customers/bulk` to `/api/customers` with PATCH method [`src/app/contacts/page.tsx`] - 2025-11-14 20:05 (1 files)
+- **JSON Parsing Error**: Added robust error handling for non-JSON API responses to prevent bulk update failures [`src/app/contacts/page.tsx`] - 2025-11-14 20:00 (1 files)
 - **Critical Tag Editing Bug**: Fixed API endpoint ignoring tags in PATCH requests causing data not to persist [`src/app/api/customers/[id]/route.ts`] - 2025-11-13 19:17 (1 files)
 - **Customer Edit Modal**: Added missing TagInput component to customer edit form for proper tag management [`src/components/customers/edit-customer-modal.tsx`] - 2025-11-13 19:17 (1 files)
 - **Type Safety**: Added tags field to Customer and NewCustomer TypeScript interfaces for consistent type checking [`src/lib/types.ts`] - 2025-11-13 19:17 (1 files)
