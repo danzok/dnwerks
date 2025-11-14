@@ -8,7 +8,15 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Session } from '@supabase/supabase-js'
 
-export const supabase = createClient()
+// Lazy initialization - only create client when needed
+let supabaseInstance: ReturnType<typeof createClient> | null = null
+
+function getSupabaseClient() {
+  if (!supabaseInstance) {
+    supabaseInstance = createClient()
+  }
+  return supabaseInstance
+}
 
 // Simple auth cache to prevent repeated checks
 let authCache: {
@@ -94,6 +102,7 @@ export function useUser() {
       }
 
       // Get initial user with proper verification
+      const supabase = getSupabaseClient()
       supabase.auth.getUser().then(({ data: { user } }: { data: { user: any } }) => {
         // Update cache
         authCache = {
@@ -159,6 +168,7 @@ export function useUser() {
 
   // Listen for real Supabase auth changes
   useEffect(() => {
+    const supabase = getSupabaseClient()
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event: string, session: Session | null) => {
@@ -199,12 +209,6 @@ export function useUser() {
   return {
     user,
     loading,
-    isLoaded: !loading,
-    isSignedIn: !!user
-  }
-
-  return {
-    user,
     isLoaded: !loading,
     isSignedIn: !!user
   }
