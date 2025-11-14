@@ -7,6 +7,11 @@ const nextConfig = {
     // !! WARN !!
     ignoreBuildErrors: true,
   },
+  reactCompiler: false, // Disable React compiler to prevent variable hoisting issues
+  compiler: {
+    // Remove react operations that might cause issues
+    reactRemoveProperties: process.env.NODE_ENV === 'production',
+  },
 }
 
 module.exports = nextConfig
