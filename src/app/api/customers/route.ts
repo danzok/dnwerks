@@ -93,7 +93,7 @@ export async function GET(request: NextRequest) {
     console.log('🔍 [API] Found customers:', customers?.length || 0, 'total:', count, 'profileId:', userProfile?.id)
 
     // Get all available tags from user's customers (separate query for reliability)
-    const profileId = userProfile?.id
+    // Reuse profileId from above
     let tagsQuery = supabase
       .from('customers')
       .select('tags')
