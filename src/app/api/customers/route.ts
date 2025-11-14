@@ -29,33 +29,11 @@ export async function GET(request: NextRequest) {
     // Parse tags from comma-separated string
     const tags = tagsParam ? tagsParam.split(',').filter(Boolean) : []
 
-    // First, get the user's profile to find the profile ID
-    // customers.user_id might reference user_profiles.id, not auth.uid()
-    const { data: userProfile, error: profileError } = await supabase
-      .from('user_profiles')
-      .select('id')
-      .eq('user_id', userId)
-      .single()
-    
-    if (profileError) {
-      console.warn('🔍 [API] Could not find user profile, will try direct user_id match:', profileError.message)
-    }
-
-    // Build query - try matching against profile.id OR auth.uid() directly
-    // This handles both cases: user_id references user_profiles.id OR user_id is auth.uid()
-    const profileId = userProfile?.id
+    // Use existing schema approach for now (user_id only)
     let query = supabase
       .from('customers')
       .select('*', { count: 'exact' })
-    
-    // Try multiple user_id formats to handle different schema setups
-    // If profile exists, try both profile.id and auth.uid()
-    // If no profile, just try auth.uid()
-    if (profileId) {
-      query = query.or(`user_id.eq.${profileId},user_id.eq.${userId}`)
-    } else {
-      query = query.eq('user_id', userId)
-    }
+      .eq('user_id', userId)
 
     // Apply search filter with better index usage
     if (search) {
@@ -84,6 +62,8 @@ export async function GET(request: NextRequest) {
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1)
 
+    // No fallback needed since we're using existing schema
+
     if (error) {
       console.error('🔍 [API] Database query error:', error)
       return NextResponse.json(
@@ -92,48 +72,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    console.log('🔍 [API] Found customers:', customers?.length || 0, 'total:', count, 'profileId:', userProfile?.id)
-
-    // Get all available tags from user's customers (separate query for reliability)
-    // Reuse profileId from above
-    let tagsQuery = supabase
-      .from('customers')
-      .select('tags')
-      .not('tags', 'is', null)
-    
-    if (profileId) {
-      tagsQuery = tagsQuery.or(`user_id.eq.${profileId},user_id.eq.${userId}`)
-    } else {
-      tagsQuery = tagsQuery.eq('user_id', userId)
-    }
-    
-    const { data: allCustomerTags } = await tagsQuery
-
-    // Extract and deduplicate all tags efficiently
-    const allTags = [...new Set(
-      allCustomerTags?.flatMap(customer => customer.tags || []) || []
-    )].sort()
-
-    const totalPages = Math.ceil((count || 0) / limit)
-
-    return NextResponse.json({
-      data: customers,
-      pagination: {
-        page,
-        limit,
-        total: count || 0,
-        totalPages,
-        hasNext: page < totalPages,
-        hasPrev: page > 1,
-      },
-      tags: allTags,
-      stats: {
-        totalCustomers: count || 0,
-        totalTags: allTags.length,
-        currentPageResults: customers?.length || 0
-      }
-    })
-
+    return processQueryResults(customers, count, userId, supabase, page, limit)
   } catch (error) {
     console.error('API Error:', error)
     return NextResponse.json(
@@ -141,6 +80,45 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     )
   }
+}
+
+// Helper function to process query results and get tags
+async function processQueryResults(customers: any[], count: number | null, userId: string, supabase: any, page: number, limit: number) {
+  console.log('🔍 [API] Processing results:', customers?.length || 0, 'total:', count)
+
+  // Get all available tags from user's customers
+  const { data: allCustomerTags } = await supabase
+    .from('customers')
+    .select('tags')
+    .eq('user_id', userId)
+    .not('tags', 'is', null)
+
+  const finalTags = allCustomerTags
+
+  // Extract and deduplicate all tags efficiently
+  const allTags = [...new Set(
+    finalTags?.flatMap(customer => customer.tags || []) || []
+  )].sort()
+
+  const totalPages = Math.ceil((count || 0) / limit)
+
+  return NextResponse.json({
+    data: customers,
+    pagination: {
+      page,
+      limit,
+      total: count || 0,
+      totalPages,
+      hasNext: page < totalPages,
+      hasPrev: page > 1,
+    },
+    tags: allTags,
+    stats: {
+      totalCustomers: count || 0,
+      totalTags: allTags.length,
+      currentPageResults: customers?.length || 0
+    }
+  })
 }
 
 // POST /api/customers - Create a new customer

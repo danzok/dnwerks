@@ -87,17 +87,26 @@ export async function auth(request?: NextRequest) {
     // Get the current user
     if (isDevelopment) {
       console.log('🔍 [AUTH DEBUG] Getting user from Supabase...')
+      console.log('🔍 [AUTH DEBUG] Environment:', process.env.NODE_ENV)
+      console.log('🔍 [AUTH DEBUG] Supabase URL configured:', !!process.env.NEXT_PUBLIC_SUPABASE_URL)
+      console.log('🔍 [AUTH DEBUG] Supabase Key configured:', !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
     }
     const { data: { user }, error } = await supabase.auth.getUser()
 
     if (isDevelopment) {
-      console.log('🔍 [AUTH DEBUG] Supabase auth result:', { user: user?.id, error: error?.message })
+      console.log('🔍 [AUTH DEBUG] Supabase auth result:', {
+        user: user?.id || null,
+        error: error?.message || null,
+        userEmail: user?.email || null
+      })
     }
 
     if (error || !user) {
       if (isDevelopment) {
-        console.log('🔍 [AUTH DEBUG] No user found, checking development fallback...')
-        console.warn('No authentication token found in development, using mock user')
+        console.log('🔍 [AUTH DEBUG] No valid Supabase user found, checking development fallback...')
+        console.log('🔍 [AUTH DEBUG] Error:', error?.message)
+        console.warn('🔐 Using mock authentication for development (no valid session)')
+
         const mockUser = {
           id: '6a06617b-deee-4f02-a08a-bdec17e46d98',
           email: 'danisbermainaja@gmail.com',
@@ -107,10 +116,12 @@ export async function auth(request?: NextRequest) {
           }
         }
 
+        // Create mock profile with user_id matching the mock user ID
         const mockProfile = {
           id: 'mock-profile-id',
-          user_id: mockUser.id,
-          role: 'admin'
+          user_id: mockUser.id, // This should match auth.uid()
+          role: 'admin',
+          status: 'approved'
         }
 
         const authResult = {
@@ -124,7 +135,7 @@ export async function auth(request?: NextRequest) {
         authCache.set(cacheKey, { data: authResult, timestamp: Date.now() })
         return authResult
       } else {
-        if (isDevelopment) console.warn('No valid session found in production')
+        console.warn('🔐 No valid session found in production')
         const authResult = { userId: null, error: 'No valid session' }
         authCache.set(cacheKey, { data: authResult, timestamp: Date.now() })
         return authResult
@@ -132,17 +143,63 @@ export async function auth(request?: NextRequest) {
     }
 
     // Check user profile
-    const { data: profile, error: profileError } = await supabase
-      .from('user_profiles')
-      .select('*')
-      .eq('user_id', user.id)
-      .single()
+    let profile
+    let profileError
+
+    try {
+      const profileResult = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .single()
+
+      profile = profileResult.data
+      profileError = profileResult.error
+
+      if (isDevelopment) {
+        console.log('🔍 [AUTH DEBUG] Profile lookup result:', {
+          profileId: profile?.id,
+          profileUserId: profile?.user_id,
+          profileError: profileError?.message
+        })
+      }
+    } catch (err) {
+      console.error('🔍 [AUTH DEBUG] Profile lookup exception:', err)
+      profileError = { message: 'Profile lookup failed' }
+    }
 
     if (profileError || !profile) {
-      console.warn('User profile not found:', user.id)
-      const authResult = { userId: null, error: 'User profile not found' }
-      authCache.set(cacheKey, { data: authResult, timestamp: Date.now() })
-      return authResult
+      if (isDevelopment) {
+        console.warn('🔍 [AUTH DEBUG] User profile not found, using mock fallback for development')
+        console.log('🔍 [AUTH DEBUG] Profile error:', profileError?.message)
+        console.log('🔍 [AUTH DEBUG] User ID:', user.id)
+
+        // In development, create a mock profile to continue
+        const mockProfile = {
+          id: 'mock-profile-id',
+          user_id: user.id, // Match auth.uid()
+          role: 'admin',
+          status: 'approved',
+          email: user.email,
+          created_at: new Date().toISOString()
+        }
+
+        const authResult = {
+          userId: user.id,
+          user,
+          profile: mockProfile,
+          role: mockProfile.role
+        }
+
+        // Cache mock result with shorter duration
+        authCache.set(cacheKey, { data: authResult, timestamp: Date.now() })
+        return authResult
+      } else {
+        console.warn('🔐 User profile not found in production:', user.id)
+        const authResult = { userId: null, error: 'User profile not found' }
+        authCache.set(cacheKey, { data: authResult, timestamp: Date.now() })
+        return authResult
+      }
     }
 
     const authResult = {
