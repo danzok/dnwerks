@@ -49,6 +49,43 @@ export function useUser() {
       return
     }
 
+    // Define tryRealSupabaseAuth before it's used
+    const tryRealSupabaseAuth = () => {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔐 useUser: Falling back to real Supabase auth...')
+      }
+
+      // Get initial user with proper verification
+      const supabase = getSupabaseClient()
+      supabase.auth.getUser().then(({ data: { user } }: { data: { user: any } }) => {
+        // Update cache
+        authCache = {
+          user: user ?? null,
+          timestamp: now,
+          loading: false
+        }
+
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔐 useUser: Initial real auth user:', user?.email || 'null')
+        }
+        setUser(user ?? null)
+        setLoading(false)
+      }).catch((error: any) => {
+        // Update cache on error
+        authCache = {
+          user: null,
+          timestamp: now,
+          loading: false
+        }
+
+        if (process.env.NODE_ENV === 'development') {
+          console.error('🔐 useUser: Error getting initial real auth user:', error)
+        }
+        setUser(null)
+        setLoading(false)
+      })
+    }
+
     // For development, check for mock authentication
     if (process.env.NODE_ENV === 'development') {
       console.log('🔐 useUser: Starting development auth check...')
@@ -94,42 +131,6 @@ export function useUser() {
     } else {
       // Production: go straight to real Supabase auth
       tryRealSupabaseAuth()
-    }
-
-    const tryRealSupabaseAuth = () => {
-      if (process.env.NODE_ENV === 'development') {
-        console.log('🔐 useUser: Falling back to real Supabase auth...')
-      }
-
-      // Get initial user with proper verification
-      const supabase = getSupabaseClient()
-      supabase.auth.getUser().then(({ data: { user } }: { data: { user: any } }) => {
-        // Update cache
-        authCache = {
-          user: user ?? null,
-          timestamp: now,
-          loading: false
-        }
-
-        if (process.env.NODE_ENV === 'development') {
-          console.log('🔐 useUser: Initial real auth user:', user?.email || 'null')
-        }
-        setUser(user ?? null)
-        setLoading(false)
-      }).catch((error: any) => {
-        // Update cache on error
-        authCache = {
-          user: null,
-          timestamp: now,
-          loading: false
-        }
-
-        if (process.env.NODE_ENV === 'development') {
-          console.error('🔐 useUser: Error getting initial real auth user:', error)
-        }
-        setUser(null)
-        setLoading(false)
-      })
     }
 
   }, [])
